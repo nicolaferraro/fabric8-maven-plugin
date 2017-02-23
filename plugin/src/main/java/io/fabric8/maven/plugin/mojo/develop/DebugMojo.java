@@ -37,6 +37,7 @@ import io.fabric8.kubernetes.client.Watch;
 import io.fabric8.kubernetes.client.Watcher;
 import io.fabric8.kubernetes.client.dsl.FilterWatchListDeletable;
 import io.fabric8.maven.core.util.DebugConstants;
+import io.fabric8.maven.core.util.KubernetesClientUtil;
 import io.fabric8.maven.core.util.KubernetesResourceUtil;
 import io.fabric8.maven.core.util.ProcessUtil;
 import io.fabric8.maven.docker.util.Logger;
@@ -214,7 +215,7 @@ public class DebugMojo extends ApplyMojo {
 
 
     private void portForward(Controller controller, String podName) throws MojoExecutionException {
-        File command = getKubeCtlExecutable(controller);
+        File command = KubernetesClientUtil.findKubeCtlExecutable(controller, log);
         log.info("Port forwarding to port " + remoteDebugPort + " on pod " + podName + " using command " + command);
 
         List<String> args = new ArrayList<>();

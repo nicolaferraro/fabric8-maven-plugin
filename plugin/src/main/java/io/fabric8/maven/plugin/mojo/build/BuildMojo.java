@@ -30,6 +30,7 @@ import io.fabric8.maven.core.config.PlatformMode;
 import io.fabric8.maven.core.config.ProcessorConfig;
 import io.fabric8.maven.core.config.ResourceConfig;
 import io.fabric8.maven.core.service.Fabric8ServiceHub;
+import io.fabric8.maven.core.service.GeneratorService;
 import io.fabric8.maven.core.util.GoalFinder;
 import io.fabric8.maven.core.util.Gofabric8Util;
 import io.fabric8.maven.core.util.OpenShiftDependencyResources;
@@ -165,6 +166,8 @@ public class BuildMojo extends io.fabric8.maven.docker.BuildMojo {
     // Access for creating OpenShift binary builds
     private ClusterAccess clusterAccess;
 
+    private GeneratorService generatorService;
+
     // The Fabric8 service hub
     Fabric8ServiceHub fabric8ServiceHub;
 
@@ -187,6 +190,36 @@ public class BuildMojo extends io.fabric8.maven.docker.BuildMojo {
         return platformMode == PlatformMode.kubernetes;
     }
 
+    /**
+     * Customization hook called by the base plugin.
+     *
+     * @param configs configuration to customize
+     * @return the configuration customized by our generators.
+     */
+    @Override
+    public List<ImageConfiguration> customizeConfig(List<ImageConfiguration> configs) {
+        platformMode = clusterAccess.resolvePlatformMode(mode, log);
+        if (platformMode == PlatformMode.openshift) {
+            log.info("Using [[B]]OpenShift[[B]] build with strategy [[B]]%s[[B]]", buildStrategy.getLabel());
+        } else {
+            log.info("Building Docker image in [[B]]Kubernetes[[B]] mode");
+        }
+
+        if (platformMode.equals(PlatformMode.openshift)) {
+            Properties properties = project.getProperties();
+            if (!properties.contains(PlatformMode.FABRIC8_EFFECTIVE_PLATFORM_MODE)) {
+                properties.setProperty(PlatformMode.FABRIC8_EFFECTIVE_PLATFORM_MODE, platformMode.toString());
+            }
+        }
+
+        generatorService = new DefaultGeneratorService(getGeneratorContext());
+        try {
+            return generatorService.generate(configs, false);
+        } catch (MojoExecutionException e) {
+            throw new IllegalArgumentException("Cannot extract generator config: " + e, e);
+        }
+    }
+
     @Override
     protected void executeInternal(ServiceHub hub) throws DockerAccessException, MojoExecutionException {
         if (project != null && skipBuildPom && Objects.equals("pom", project.getPackaging())) {
@@ -198,7 +231,7 @@ public class BuildMojo extends io.fabric8.maven.docker.BuildMojo {
         }
 
         // Build the fabric8 service hub
-        fabric8ServiceHub = new Fabric8ServiceHub(clusterAccess, mode, log, hub, new DefaultGeneratorService(getGeneratorContext()), new DefaultEnricherService(resources, getEnricherContext()), null);
+        fabric8ServiceHub = new Fabric8ServiceHub(clusterAccess, mode, log, hub, generatorService, new DefaultEnricherService(resources, getEnricherContext()), null);
 
         super.executeInternal(hub);
     }
@@ -234,35 +267,6 @@ public class BuildMojo extends io.fabric8.maven.docker.BuildMojo {
                 .s2iBuildNameSuffix(s2iBuildNameSuffix)
                 .buildDirectory(project.getBuild().getDirectory())
                 .build();
-    }
-
-    /**
-     * Customization hook called by the base plugin.
-     *
-     * @param configs configuration to customize
-     * @return the configuration customized by our generators.
-     */
-    @Override
-    public List<ImageConfiguration> customizeConfig(List<ImageConfiguration> configs) {
-        platformMode = clusterAccess.resolvePlatformMode(mode, log);
-        if (platformMode == PlatformMode.openshift) {
-            log.info("Using [[B]]OpenShift[[B]] build with strategy [[B]]%s[[B]]", buildStrategy.getLabel());
-        } else {
-            log.info("Building Docker image in [[B]]Kubernetes[[B]] mode");
-        }
-
-        if (platformMode.equals(PlatformMode.openshift)) {
-            Properties properties = project.getProperties();
-            if (!properties.contains(PlatformMode.FABRIC8_EFFECTIVE_PLATFORM_MODE)) {
-                properties.setProperty(PlatformMode.FABRIC8_EFFECTIVE_PLATFORM_MODE, platformMode.toString());
-            }
-        }
-
-        try {
-            return fabric8ServiceHub.getGeneratorService().generate(configs, false);
-        } catch (MojoExecutionException e) {
-            throw new IllegalArgumentException("Cannot extract generator config: " + e, e);
-        }
     }
 
     @Override

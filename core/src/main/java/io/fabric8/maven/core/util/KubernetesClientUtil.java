@@ -17,6 +17,7 @@
 package io.fabric8.maven.core.util;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -185,6 +186,25 @@ public class KubernetesClientUtil {
             }
         };
         thread.start();
+    }
+
+    public static File findKubeCtlExecutable(Controller controller, Logger log) {
+        OpenShiftClient openShiftClient = controller.getOpenShiftClientOrNull();
+        String command = openShiftClient != null ? "oc" : "kubectl";
+
+        String missingCommandMessage;
+        File file = ProcessUtil.findExecutable(log, command);
+        if (file == null && command.equals("oc")) {
+            file = ProcessUtil.findExecutable(log, command);
+            missingCommandMessage = "commands oc or kubectl";
+        } else {
+            missingCommandMessage = "command " + command;
+        }
+        if (file == null) {
+            throw new IllegalStateException("Could not find " + missingCommandMessage +
+                    ". Please try running `mvn fabric8:install` to install the necessary binaries and ensure they get added to your $PATH");
+        }
+        return file;
     }
 
     public static String getPodStatusDescription(Pod pod) {
