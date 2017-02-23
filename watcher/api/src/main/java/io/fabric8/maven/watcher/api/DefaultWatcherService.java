@@ -13,7 +13,7 @@
  * implied.  See the License for the specific language governing
  * permissions and limitations under the License.
  */
-package io.fabric8.maven.plugin.watcher;
+package io.fabric8.maven.watcher.api;
 
 import java.util.List;
 import java.util.Set;
@@ -22,12 +22,11 @@ import io.fabric8.kubernetes.api.KubernetesHelper;
 import io.fabric8.kubernetes.api.model.HasMetadata;
 import io.fabric8.maven.core.config.PlatformMode;
 import io.fabric8.maven.core.config.ProcessorConfig;
+import io.fabric8.maven.core.service.WatcherService;
 import io.fabric8.maven.core.util.ClassUtil;
 import io.fabric8.maven.core.util.PluginServiceFactory;
 import io.fabric8.maven.docker.config.ImageConfiguration;
 import io.fabric8.maven.docker.util.Logger;
-import io.fabric8.maven.watcher.api.Watcher;
-import io.fabric8.maven.watcher.api.WatcherContext;
 
 /**
  * Manager responsible for finding and calling watchers
@@ -35,10 +34,16 @@ import io.fabric8.maven.watcher.api.WatcherContext;
  * @author nicola
  * @since 06/02/17
  */
-public class WatcherManager {
+public class DefaultWatcherService implements WatcherService {
 
-    public static void watch(List<ImageConfiguration> ret, Set<HasMetadata> resources, WatcherContext watcherCtx) throws Exception {
+    private WatcherContext watcherCtx;
 
+    public DefaultWatcherService(WatcherContext watcherCtx) {
+        this.watcherCtx = watcherCtx;
+    }
+
+    @Override
+    public void watch(List<ImageConfiguration> ret, Set<HasMetadata> resources) throws Exception {
         PluginServiceFactory<WatcherContext> pluginFactory =
                 watcherCtx.isUseProjectClasspath() ?
             new PluginServiceFactory<>(watcherCtx, ClassUtil.createProjectClassLoader(watcherCtx.getProject(), watcherCtx.getLogger())) :

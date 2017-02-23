@@ -198,7 +198,7 @@ public class BuildMojo extends io.fabric8.maven.docker.BuildMojo {
         }
 
         // Build the fabric8 service hub
-        fabric8ServiceHub = new Fabric8ServiceHub(clusterAccess, mode, log, hub, new DefaultGeneratorService(getGeneratorContext()), new DefaultEnricherService(resources, getEnricherContext()));
+        fabric8ServiceHub = new Fabric8ServiceHub(clusterAccess, mode, log, hub, new DefaultGeneratorService(getGeneratorContext()), new DefaultEnricherService(resources, getEnricherContext()), null);
 
         super.executeInternal(hub);
     }

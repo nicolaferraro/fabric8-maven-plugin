@@ -56,6 +56,9 @@ public class Fabric8ServiceHubTest {
     @Mocked
     private EnricherService enricherService;
 
+    @Mocked
+    private WatcherService watcherService;
+
     @Before
     public void init() {
         new Expectations() {{
@@ -89,7 +92,7 @@ public class Fabric8ServiceHubTest {
     }
 
     private Fabric8ServiceHub createServiceHub(PlatformMode mode) {
-        return new Fabric8ServiceHub(mockClusterAccess, mode, log, dockerServiceHub, generatorService, enricherService);
+        return new Fabric8ServiceHub(mockClusterAccess, mode, log, dockerServiceHub, generatorService, enricherService, watcherService);
     }
 
 }

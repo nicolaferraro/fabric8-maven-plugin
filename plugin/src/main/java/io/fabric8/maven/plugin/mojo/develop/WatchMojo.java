@@ -43,9 +43,9 @@ import io.fabric8.maven.docker.service.ServiceHub;
 import io.fabric8.maven.docker.service.WatchService;
 import io.fabric8.maven.docker.util.AnsiLogger;
 import io.fabric8.maven.docker.util.Logger;
-import io.fabric8.maven.generator.api.GeneratorContext;
 import io.fabric8.maven.generator.api.DefaultGeneratorService;
-import io.fabric8.maven.plugin.watcher.WatcherManager;
+import io.fabric8.maven.generator.api.GeneratorContext;
+import io.fabric8.maven.watcher.api.DefaultWatcherService;
 import io.fabric8.maven.watcher.api.WatcherContext;
 
 import org.apache.maven.plugin.MojoExecutionException;
@@ -180,7 +180,7 @@ public class WatchMojo extends io.fabric8.maven.docker.WatchMojo {
             Set<HasMetadata> resources = KubernetesResourceUtil.loadResources(manifest);
             WatcherContext context = getWatcherContext();
 
-            WatcherManager.watch(getResolvedImages(), resources, context);
+            new DefaultWatcherService(context).watch(getResolvedImages(), resources);
 
         } catch (KubernetesClientException ex) {
             KubernetesResourceUtil.handleKubernetesClientException(ex, this.log);
