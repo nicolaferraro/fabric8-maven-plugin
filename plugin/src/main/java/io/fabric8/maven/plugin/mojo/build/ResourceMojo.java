@@ -18,21 +18,44 @@ package io.fabric8.maven.plugin.mojo.build;
 import java.io.File;
 import java.io.FileFilter;
 import java.io.IOException;
-import java.util.*;
-
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Properties;
 import javax.validation.ConstraintViolationException;
 
 import io.fabric8.kubernetes.api.KubernetesHelper;
 import io.fabric8.kubernetes.api.builder.TypedVisitor;
 import io.fabric8.kubernetes.api.extensions.Templates;
-import io.fabric8.kubernetes.api.model.*;
+import io.fabric8.kubernetes.api.model.ConfigMap;
+import io.fabric8.kubernetes.api.model.HasMetadata;
+import io.fabric8.kubernetes.api.model.KubernetesList;
+import io.fabric8.kubernetes.api.model.KubernetesListBuilder;
+import io.fabric8.kubernetes.api.model.ObjectMeta;
+import io.fabric8.kubernetes.api.model.PodTemplateSpecBuilder;
+import io.fabric8.kubernetes.api.model.Service;
 import io.fabric8.kubernetes.api.model.extensions.Deployment;
 import io.fabric8.maven.core.access.ClusterAccess;
-import io.fabric8.maven.core.config.*;
+import io.fabric8.maven.core.config.OpenShiftBuildStrategy;
+import io.fabric8.maven.core.config.PlatformMode;
+import io.fabric8.maven.core.config.ProcessorConfig;
+import io.fabric8.maven.core.config.Profile;
+import io.fabric8.maven.core.config.ResourceConfig;
+import io.fabric8.maven.core.config.ServiceConfig;
 import io.fabric8.maven.core.handler.HandlerHub;
 import io.fabric8.maven.core.handler.ReplicationControllerHandler;
 import io.fabric8.maven.core.handler.ServiceHandler;
-import io.fabric8.maven.core.util.*;
+import io.fabric8.maven.core.service.EnricherService;
+import io.fabric8.maven.core.util.KubernetesResourceUtil;
+import io.fabric8.maven.core.util.MavenUtil;
+import io.fabric8.maven.core.util.OpenShiftDependencyResources;
+import io.fabric8.maven.core.util.ProfileUtil;
+import io.fabric8.maven.core.util.ResourceClassifier;
+import io.fabric8.maven.core.util.ValidationUtil;
 import io.fabric8.maven.docker.AbstractDockerMojo;
 import io.fabric8.maven.docker.config.ConfigHelper;
 import io.fabric8.maven.docker.config.ImageConfiguration;
@@ -40,18 +63,27 @@ import io.fabric8.maven.docker.config.handler.ImageConfigResolver;
 import io.fabric8.maven.docker.util.EnvUtil;
 import io.fabric8.maven.docker.util.ImageNameFormatter;
 import io.fabric8.maven.docker.util.Logger;
+import io.fabric8.maven.enricher.api.DefaultEnricherService;
 import io.fabric8.maven.enricher.api.EnricherContext;
 import io.fabric8.maven.enricher.api.util.InitContainerHandler;
 import io.fabric8.maven.enricher.standard.VolumePermissionEnricher;
+import io.fabric8.maven.generator.api.DefaultGeneratorService;
 import io.fabric8.maven.generator.api.GeneratorContext;
-import io.fabric8.maven.plugin.converter.*;
-import io.fabric8.maven.plugin.enricher.EnricherManager;
-import io.fabric8.maven.plugin.generator.GeneratorManager;
+import io.fabric8.maven.plugin.converter.DeploymentConfigOpenShiftConverter;
+import io.fabric8.maven.plugin.converter.DeploymentOpenShiftConverter;
+import io.fabric8.maven.plugin.converter.KubernetesToOpenShiftConverter;
+import io.fabric8.maven.plugin.converter.NamespaceOpenShiftConverter;
+import io.fabric8.maven.plugin.converter.ReplicSetOpenShiftConverter;
 import io.fabric8.openshift.api.model.DeploymentConfig;
 import io.fabric8.openshift.api.model.Template;
+
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
-import org.apache.maven.plugins.annotations.*;
+import org.apache.maven.plugins.annotations.Component;
+import org.apache.maven.plugins.annotations.LifecyclePhase;
+import org.apache.maven.plugins.annotations.Mojo;
+import org.apache.maven.plugins.annotations.Parameter;
+import org.apache.maven.plugins.annotations.ResolutionScope;
 import org.apache.maven.shared.filtering.MavenFileFilter;
 import org.apache.maven.shared.filtering.MavenFilteringException;
 
@@ -353,7 +385,7 @@ public class ResourceMojo extends AbstractResourceMojo {
         if (resources != null) {
             ctxBuilder.namespace(resources.getNamespace());
         }
-        EnricherManager enricherManager = new EnricherManager(resources, ctxBuilder.build());
+        EnricherService enricherManager = new DefaultEnricherService(resources, ctxBuilder.build());
 
         // Generate all resources from the main resource diretory, configuration and enrich them accordingly
         KubernetesListBuilder builder = generateAppResources(images, enricherManager);
@@ -365,7 +397,7 @@ public class ResourceMojo extends AbstractResourceMojo {
         return builder.build();
     }
 
-    private void addProfiledResourcesFromSubirectories(KubernetesListBuilder builder, File resourceDir, EnricherManager enricherManager) throws IOException, MojoExecutionException {
+    private void addProfiledResourcesFromSubirectories(KubernetesListBuilder builder, File resourceDir, EnricherService enricherManager) throws IOException, MojoExecutionException {
         File[] profileDirs = resourceDir.listFiles(new FileFilter() {
             @Override
             public boolean accept(File pathname) {
@@ -396,7 +428,7 @@ public class ResourceMojo extends AbstractResourceMojo {
         }
     }
 
-    private KubernetesListBuilder generateAppResources(List<ImageConfiguration> images, EnricherManager enricherManager) throws IOException, MojoExecutionException {
+    private KubernetesListBuilder generateAppResources(List<ImageConfiguration> images, EnricherService enricherManager) throws IOException, MojoExecutionException {
         try {
             File[] resourceFiles = KubernetesResourceUtil.listResourceFragments(resourceDir);
             KubernetesListBuilder builder;
@@ -603,7 +635,7 @@ public class ResourceMojo extends AbstractResourceMojo {
                             .strategy(buildStrategy)
                             .useProjectClasspath(useProjectClasspath)
                             .build();
-                        return GeneratorManager.generate(configs, ctx, true);
+                        return new DefaultGeneratorService(ctx).generate(configs, true);
                     } catch (Exception e) {
                         throw new IllegalArgumentException("Cannot extract generator: " + e,e);
                     }

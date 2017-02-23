@@ -14,30 +14,32 @@
  * permissions and limitations under the License.
  */
 
-package io.fabric8.maven.plugin.enricher;
+package io.fabric8.maven.enricher.api;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import io.fabric8.kubernetes.api.model.KubernetesListBuilder;
 import io.fabric8.maven.core.config.MetaDataConfig;
 import io.fabric8.maven.core.config.ProcessorConfig;
 import io.fabric8.maven.core.config.ResourceConfig;
+import io.fabric8.maven.core.service.EnricherService;
 import io.fabric8.maven.core.util.ClassUtil;
 import io.fabric8.maven.core.util.PluginServiceFactory;
 import io.fabric8.maven.docker.util.Logger;
-import io.fabric8.maven.enricher.api.Enricher;
-import io.fabric8.maven.enricher.api.EnricherContext;
-import io.fabric8.maven.enricher.api.Kind;
 import io.fabric8.utils.Function;
 
-import static io.fabric8.maven.plugin.enricher.EnricherManager.Extractor.*;
+import static io.fabric8.maven.enricher.api.DefaultEnricherService.Extractor.ANNOTATION_EXTRACTOR;
+import static io.fabric8.maven.enricher.api.DefaultEnricherService.Extractor.LABEL_EXTRACTOR;
+import static io.fabric8.maven.enricher.api.DefaultEnricherService.Extractor.SELECTOR_EXTRACTOR;
 
 
 /**
  * @author roland
  * @since 08/04/16
  */
-public class EnricherManager {
+public class DefaultEnricherService implements EnricherService {
 
     // Meta data from config
     private final MetaDataConfig labelConfig;
@@ -55,7 +57,7 @@ public class EnricherManager {
     private final MetadataVisitor<?>[] metaDataVisitors;
     private final SelectorVisitor<?>[] selectorVisitorCreators;
 
-    public EnricherManager(ResourceConfig resourceConfig, EnricherContext enricherContext) {
+    public DefaultEnricherService(ResourceConfig resourceConfig, EnricherContext enricherContext) {
         PluginServiceFactory<EnricherContext> pluginFactory = new PluginServiceFactory<>(enricherContext);
 
         if (enricherContext.isUseProjectClasspath()) {

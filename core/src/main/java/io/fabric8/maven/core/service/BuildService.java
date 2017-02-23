@@ -15,12 +15,10 @@
  */
 package io.fabric8.maven.core.service;
 
-import io.fabric8.kubernetes.api.model.KubernetesListBuilder;
 import io.fabric8.maven.core.config.BuildRecreateMode;
 import io.fabric8.maven.core.config.OpenShiftBuildStrategy;
 import io.fabric8.maven.docker.config.ImageConfiguration;
 import io.fabric8.maven.docker.util.MojoParameters;
-import io.fabric8.maven.docker.util.Task;
 
 /**
  * @author nicola
@@ -52,8 +50,6 @@ public interface BuildService {
 
         private String s2iBuildNameSuffix;
 
-        private Task<KubernetesListBuilder> enricherTask;
-
         private String buildDirectory;
 
         public BuildServiceConfig() {
@@ -77,10 +73,6 @@ public interface BuildService {
 
         public String getS2iBuildNameSuffix() {
             return s2iBuildNameSuffix;
-        }
-
-        public Task<KubernetesListBuilder> getEnricherTask() {
-            return enricherTask;
         }
 
         public String getBuildDirectory() {
@@ -120,11 +112,6 @@ public interface BuildService {
 
             public Builder s2iBuildNameSuffix(String s2iBuildNameSuffix) {
                 config.s2iBuildNameSuffix = s2iBuildNameSuffix;
-                return this;
-            }
-
-            public Builder enricherTask(Task<KubernetesListBuilder> enricherTask) {
-                config.enricherTask = enricherTask;
                 return this;
             }
 

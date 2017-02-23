@@ -44,7 +44,7 @@ import io.fabric8.maven.docker.service.WatchService;
 import io.fabric8.maven.docker.util.AnsiLogger;
 import io.fabric8.maven.docker.util.Logger;
 import io.fabric8.maven.generator.api.GeneratorContext;
-import io.fabric8.maven.plugin.generator.GeneratorManager;
+import io.fabric8.maven.generator.api.DefaultGeneratorService;
 import io.fabric8.maven.plugin.watcher.WatcherManager;
 import io.fabric8.maven.watcher.api.WatcherContext;
 
@@ -235,7 +235,7 @@ public class WatchMojo extends io.fabric8.maven.docker.WatchMojo {
                     .strategy(buildStrategy)
                     .useProjectClasspath(useProjectClasspath)
                     .build();
-            return GeneratorManager.generate(configs, ctx, false);
+            return new DefaultGeneratorService(ctx).generate(configs, false);
         } catch (MojoExecutionException e) {
             throw new IllegalArgumentException("Cannot extract generator config: " + e, e);
         }

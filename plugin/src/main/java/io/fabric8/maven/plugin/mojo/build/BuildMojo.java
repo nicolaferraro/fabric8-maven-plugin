@@ -23,7 +23,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Properties;
 
-import io.fabric8.kubernetes.api.model.KubernetesListBuilder;
 import io.fabric8.maven.core.access.ClusterAccess;
 import io.fabric8.maven.core.config.BuildRecreateMode;
 import io.fabric8.maven.core.config.OpenShiftBuildStrategy;
@@ -40,11 +39,10 @@ import io.fabric8.maven.docker.config.ImageConfiguration;
 import io.fabric8.maven.docker.service.DockerAccessFactory;
 import io.fabric8.maven.docker.service.ServiceHub;
 import io.fabric8.maven.docker.util.EnvUtil;
-import io.fabric8.maven.docker.util.Task;
+import io.fabric8.maven.enricher.api.DefaultEnricherService;
 import io.fabric8.maven.enricher.api.EnricherContext;
+import io.fabric8.maven.generator.api.DefaultGeneratorService;
 import io.fabric8.maven.generator.api.GeneratorContext;
-import io.fabric8.maven.plugin.enricher.EnricherManager;
-import io.fabric8.maven.plugin.generator.GeneratorManager;
 
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
@@ -200,7 +198,7 @@ public class BuildMojo extends io.fabric8.maven.docker.BuildMojo {
         }
 
         // Build the fabric8 service hub
-        fabric8ServiceHub = new Fabric8ServiceHub(clusterAccess, mode, log, hub);
+        fabric8ServiceHub = new Fabric8ServiceHub(clusterAccess, mode, log, hub, new DefaultGeneratorService(getGeneratorContext()), new DefaultEnricherService(resources, getEnricherContext()));
 
         super.executeInternal(hub);
     }
@@ -235,12 +233,6 @@ public class BuildMojo extends io.fabric8.maven.docker.BuildMojo {
                 .openshiftBuildStrategy(buildStrategy)
                 .s2iBuildNameSuffix(s2iBuildNameSuffix)
                 .buildDirectory(project.getBuild().getDirectory())
-                .enricherTask(new Task<KubernetesListBuilder>() {
-                    @Override
-                    public void execute(KubernetesListBuilder builder) throws Exception {
-                        new EnricherManager(resources, getEnricherContext()).enrich(builder);
-                    }
-                })
                 .build();
     }
 
@@ -267,7 +259,7 @@ public class BuildMojo extends io.fabric8.maven.docker.BuildMojo {
         }
 
         try {
-            return GeneratorManager.generate(configs, getGeneratorContext(), false);
+            return fabric8ServiceHub.getGeneratorService().generate(configs, false);
         } catch (MojoExecutionException e) {
             throw new IllegalArgumentException("Cannot extract generator config: " + e, e);
         }

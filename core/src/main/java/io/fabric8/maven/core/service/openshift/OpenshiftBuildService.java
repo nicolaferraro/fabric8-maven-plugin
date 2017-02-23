@@ -35,6 +35,7 @@ import io.fabric8.kubernetes.client.Watcher;
 import io.fabric8.kubernetes.client.dsl.LogWatch;
 import io.fabric8.maven.core.config.OpenShiftBuildStrategy;
 import io.fabric8.maven.core.service.BuildService;
+import io.fabric8.maven.core.service.EnricherService;
 import io.fabric8.maven.core.service.Fabric8ServiceException;
 import io.fabric8.maven.core.util.KubernetesClientUtil;
 import io.fabric8.maven.core.util.KubernetesResourceUtil;
@@ -65,11 +66,13 @@ public class OpenshiftBuildService implements BuildService {
     private final OpenShiftClient client;
     private final Logger log;
     private ServiceHub dockerServiceHub;
+    private EnricherService enricherService;
 
-    public OpenshiftBuildService(OpenShiftClient client, Logger log, ServiceHub dockerServiceHub) {
+    public OpenshiftBuildService(OpenShiftClient client, Logger log, ServiceHub dockerServiceHub, EnricherService enricherService) {
         this.client = client;
         this.log = log;
         this.dockerServiceHub = dockerServiceHub;
+        this.enricherService = enricherService;
     }
 
     @Override
@@ -240,9 +243,7 @@ public class OpenshiftBuildService implements BuildService {
     }
 
     private void applyResourceObjects(BuildServiceConfig config, OpenShiftClient client, KubernetesListBuilder builder) throws Exception {
-        if (config.getEnricherTask() != null) {
-            config.getEnricherTask().execute(builder);
-        }
+        enricherService.enrich(builder);
         if (builder.hasItems()) {
             KubernetesList k8sList = builder.build();
             client.lists().create(k8sList);

@@ -14,19 +14,25 @@
  * permissions and limitations under the License.
  */
 
-package io.fabric8.maven.plugin.enricher;
+package io.fabric8.maven.enricher.api;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 
 import io.fabric8.kubernetes.api.builder.TypedVisitor;
-import io.fabric8.kubernetes.api.model.*;
-import io.fabric8.kubernetes.api.model.extensions.*;
+import io.fabric8.kubernetes.api.model.JobBuilder;
+import io.fabric8.kubernetes.api.model.ObjectMeta;
+import io.fabric8.kubernetes.api.model.PodTemplateSpecBuilder;
+import io.fabric8.kubernetes.api.model.ReplicationControllerBuilder;
+import io.fabric8.kubernetes.api.model.ServiceBuilder;
+import io.fabric8.kubernetes.api.model.extensions.DaemonSetBuilder;
+import io.fabric8.kubernetes.api.model.extensions.DeploymentBuilder;
+import io.fabric8.kubernetes.api.model.extensions.ReplicaSetBuilder;
+import io.fabric8.kubernetes.api.model.extensions.StatefulSetBuilder;
 import io.fabric8.maven.core.config.MetaDataConfig;
 import io.fabric8.maven.core.config.ProcessorConfig;
 import io.fabric8.maven.core.config.ResourceConfig;
-import io.fabric8.maven.enricher.api.Kind;
 
 /**
  * Visitor which adds labels and annotations
@@ -36,13 +42,13 @@ import io.fabric8.maven.enricher.api.Kind;
  */
 public abstract class MetadataVisitor<T> extends TypedVisitor<T> {
 
-    private final EnricherManager enricherManager;
+    private final DefaultEnricherService enricherManager;
 
     private static ThreadLocal<ProcessorConfig> configHolder = new ThreadLocal<>();
     private final Map<String, String> labelsFromConfig;
     private final Map<String, String> annotationFromConfig;
 
-    private MetadataVisitor(ResourceConfig resourceConfig, EnricherManager enricherManager) {
+    private MetadataVisitor(ResourceConfig resourceConfig, DefaultEnricherService enricherManager) {
         this.enricherManager = enricherManager;
         if (resourceConfig != null) {
             labelsFromConfig = getMapFromConfiguration(resourceConfig.getLabels(), getKind());
@@ -141,7 +147,7 @@ public abstract class MetadataVisitor<T> extends TypedVisitor<T> {
 
     public static class PodTemplateSpecBuilderVisitor extends MetadataVisitor<PodTemplateSpecBuilder> {
 
-        PodTemplateSpecBuilderVisitor(ResourceConfig resourceConfig, EnricherManager enricher) {
+        PodTemplateSpecBuilderVisitor(ResourceConfig resourceConfig, DefaultEnricherService enricher) {
             super(resourceConfig, enricher);
         }
 
@@ -158,7 +164,7 @@ public abstract class MetadataVisitor<T> extends TypedVisitor<T> {
 
     public static class ServiceBuilderVisitor extends MetadataVisitor<ServiceBuilder> {
 
-        ServiceBuilderVisitor(ResourceConfig resourceConfig, EnricherManager enricher) {
+        ServiceBuilderVisitor(ResourceConfig resourceConfig, DefaultEnricherService enricher) {
             super(resourceConfig, enricher);
         }
 
@@ -174,7 +180,7 @@ public abstract class MetadataVisitor<T> extends TypedVisitor<T> {
     }
 
     public static class ReplicaSet extends MetadataVisitor<ReplicaSetBuilder> {
-        ReplicaSet(ResourceConfig resourceConfig, EnricherManager enricher) {
+        ReplicaSet(ResourceConfig resourceConfig, DefaultEnricherService enricher) {
             super(resourceConfig, enricher);
         }
 
@@ -190,7 +196,7 @@ public abstract class MetadataVisitor<T> extends TypedVisitor<T> {
     }
 
     public static class ReplicationControllerBuilderVisitor extends MetadataVisitor<ReplicationControllerBuilder> {
-        ReplicationControllerBuilderVisitor(ResourceConfig resourceConfig, EnricherManager enricher) {
+        ReplicationControllerBuilderVisitor(ResourceConfig resourceConfig, DefaultEnricherService enricher) {
             super(resourceConfig, enricher);
         }
 
@@ -206,7 +212,7 @@ public abstract class MetadataVisitor<T> extends TypedVisitor<T> {
     }
 
     public static class DeploymentBuilderVisitor extends MetadataVisitor<DeploymentBuilder> {
-        DeploymentBuilderVisitor(ResourceConfig resourceConfig, EnricherManager enricher) {
+        DeploymentBuilderVisitor(ResourceConfig resourceConfig, DefaultEnricherService enricher) {
             super(resourceConfig, enricher);
         }
 
@@ -222,7 +228,7 @@ public abstract class MetadataVisitor<T> extends TypedVisitor<T> {
     }
 
     public static class DaemonSetBuilderVisitor extends MetadataVisitor<DaemonSetBuilder> {
-        DaemonSetBuilderVisitor(ResourceConfig resourceConfig, EnricherManager enricher) {
+        DaemonSetBuilderVisitor(ResourceConfig resourceConfig, DefaultEnricherService enricher) {
             super(resourceConfig, enricher);
         }
 
@@ -238,7 +244,7 @@ public abstract class MetadataVisitor<T> extends TypedVisitor<T> {
     }
 
     public static class StatefulSetBuilderVisitor extends MetadataVisitor<StatefulSetBuilder> {
-        StatefulSetBuilderVisitor(ResourceConfig resourceConfig, EnricherManager enricher) {
+        StatefulSetBuilderVisitor(ResourceConfig resourceConfig, DefaultEnricherService enricher) {
             super(resourceConfig, enricher);
         }
 
@@ -254,7 +260,7 @@ public abstract class MetadataVisitor<T> extends TypedVisitor<T> {
     }
 
     public static class JobBuilderVisitor extends MetadataVisitor<JobBuilder> {
-        JobBuilderVisitor(ResourceConfig resourceConfig, EnricherManager enricher) {
+        JobBuilderVisitor(ResourceConfig resourceConfig, DefaultEnricherService enricher) {
             super(resourceConfig, enricher);
         }
 

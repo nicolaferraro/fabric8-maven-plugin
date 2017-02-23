@@ -14,7 +14,7 @@
  * permissions and limitations under the License.
  */
 
-package io.fabric8.maven.plugin.enricher;
+package io.fabric8.maven.plugin;
 
 import java.util.*;
 
@@ -22,6 +22,7 @@ import io.fabric8.kubernetes.api.model.*;
 import io.fabric8.kubernetes.api.model.extensions.ReplicaSet;
 import io.fabric8.maven.core.config.ProcessorConfig;
 import io.fabric8.maven.docker.config.ImageConfiguration;
+import io.fabric8.maven.enricher.api.DefaultEnricherService;
 import io.fabric8.maven.enricher.api.EnricherContext;
 import mockit.Expectations;
 import mockit.Mocked;
@@ -36,7 +37,7 @@ import static org.junit.Assert.*;
  * @since 23/09/16
  */
 @RunWith(JMockit.class)
-public class EnricherManagerTest {
+public class EnricherIntegrationTest {
 
     @Mocked
     private EnricherContext context;
@@ -47,7 +48,7 @@ public class EnricherManagerTest {
            context.getConfig(); result = new ProcessorConfig(Arrays.asList("fmp-controller"), null, null);
            context.getImages(); result = new ImageConfiguration.Builder().alias("img1").name("img1").build();
         }};
-        EnricherManager manager = new EnricherManager(null, context);
+        DefaultEnricherService manager = new DefaultEnricherService(null, context);
 
         KubernetesListBuilder builder = new KubernetesListBuilder();
         manager.createDefaultResources(builder);
@@ -59,7 +60,7 @@ public class EnricherManagerTest {
         new Expectations() {{
            context.getConfig(); result = ProcessorConfig.EMPTY;
         }};
-        EnricherManager manager = new EnricherManager(null, context);
+        DefaultEnricherService manager = new DefaultEnricherService(null, context);
 
         KubernetesListBuilder builder = new KubernetesListBuilder();
         manager.enrich(builder);
@@ -71,7 +72,7 @@ public class EnricherManagerTest {
         new Expectations() {{
            context.getConfig(); result = new ProcessorConfig(Arrays.asList("fmp-project"),null,new HashMap<String, TreeMap>());
         }};
-        EnricherManager manager = new EnricherManager(null, context);
+        DefaultEnricherService manager = new DefaultEnricherService(null, context);
 
         KubernetesListBuilder builder = new KubernetesListBuilder();
         builder.addNewReplicaSetItem()

@@ -23,6 +23,7 @@ import io.fabric8.kubernetes.api.model.WatchEvent;
 import io.fabric8.maven.core.config.BuildRecreateMode;
 import io.fabric8.maven.core.config.OpenShiftBuildStrategy;
 import io.fabric8.maven.core.service.BuildService;
+import io.fabric8.maven.core.service.EnricherService;
 import io.fabric8.maven.core.service.Fabric8ServiceException;
 import io.fabric8.maven.docker.config.BuildImageConfiguration;
 import io.fabric8.maven.docker.config.ImageConfiguration;
@@ -69,6 +70,9 @@ public class OpenshiftBuildServiceTest {
     @Mocked
     private io.fabric8.maven.docker.util.Logger logger;
 
+    @Mocked
+    private EnricherService enricherService;
+
     private ImageConfiguration image;
 
     private BuildService.BuildServiceConfig.Builder defaultConfig;
@@ -104,7 +108,7 @@ public class OpenshiftBuildServiceTest {
         BuildService.BuildServiceConfig config = defaultConfig.build();
         OpenShiftMockServer mockServer = createMockServer(config, true, 50, false, false);
         OpenShiftClient client = mockServer.createOpenShiftClient();
-        OpenshiftBuildService service = new OpenshiftBuildService(client, logger, dockerServiceHub);
+        OpenshiftBuildService service = new OpenshiftBuildService(client, logger, dockerServiceHub, enricherService);
         service.build(config, image);
 
         // we should add a better way to assert that a certain call has been made
@@ -117,7 +121,7 @@ public class OpenshiftBuildServiceTest {
         BuildService.BuildServiceConfig config = defaultConfig.build();
         OpenShiftMockServer mockServer = createMockServer(config, false, 50, false, false);
         OpenShiftClient client = mockServer.createOpenShiftClient();
-        OpenshiftBuildService service = new OpenshiftBuildService(client, logger, dockerServiceHub);
+        OpenshiftBuildService service = new OpenshiftBuildService(client, logger, dockerServiceHub, enricherService);
         service.build(config, image);
     }
 
@@ -126,7 +130,7 @@ public class OpenshiftBuildServiceTest {
         BuildService.BuildServiceConfig config = defaultConfig.build();
         OpenShiftMockServer mockServer = createMockServer(config, true, 50, true, true);
         OpenShiftClient client = mockServer.createOpenShiftClient();
-        OpenshiftBuildService service = new OpenshiftBuildService(client, logger, dockerServiceHub);
+        OpenshiftBuildService service = new OpenshiftBuildService(client, logger, dockerServiceHub, enricherService);
         service.build(config, image);
 
         assertTrue(mockServer.getRequestCount() > 8);

@@ -50,6 +50,12 @@ public class Fabric8ServiceHubTest {
     @Mocked
     private ServiceHub dockerServiceHub;
 
+    @Mocked
+    private GeneratorService generatorService;
+
+    @Mocked
+    private EnricherService enricherService;
+
     @Before
     public void init() {
         new Expectations() {{
@@ -63,10 +69,10 @@ public class Fabric8ServiceHubTest {
         new Expectations() {{
            mockClusterAccess.resolvePlatformMode(withAny(PlatformMode.class.cast(null)), log); result = PlatformMode.kubernetes;
         }};
-        Fabric8ServiceHub hub = new Fabric8ServiceHub(mockClusterAccess, PlatformMode.kubernetes, log, dockerServiceHub);
+        Fabric8ServiceHub hub = createServiceHub(PlatformMode.auto);
         assertTrue(hub.getBuildService() instanceof DockerBuildService);
 
-        Fabric8ServiceHub hub2 = new Fabric8ServiceHub(mockClusterAccess, PlatformMode.auto, log, dockerServiceHub);
+        Fabric8ServiceHub hub2 = createServiceHub(PlatformMode.kubernetes);
         assertTrue(hub2.getBuildService() instanceof DockerBuildService);
     }
 
@@ -75,11 +81,15 @@ public class Fabric8ServiceHubTest {
         new Expectations() {{
             mockClusterAccess.resolvePlatformMode(withAny(PlatformMode.class.cast(null)), log); result = PlatformMode.openshift;
         }};
-        Fabric8ServiceHub hub = new Fabric8ServiceHub(mockClusterAccess, PlatformMode.auto, log, dockerServiceHub);
+        Fabric8ServiceHub hub = createServiceHub(PlatformMode.auto);
         assertTrue(hub.getBuildService() instanceof OpenshiftBuildService);
 
-        Fabric8ServiceHub hub2 = new Fabric8ServiceHub(mockClusterAccess, PlatformMode.openshift, log, dockerServiceHub);
+        Fabric8ServiceHub hub2 = createServiceHub(PlatformMode.openshift);
         assertTrue(hub2.getBuildService() instanceof OpenshiftBuildService);
+    }
+
+    private Fabric8ServiceHub createServiceHub(PlatformMode mode) {
+        return new Fabric8ServiceHub(mockClusterAccess, mode, log, dockerServiceHub, generatorService, enricherService);
     }
 
 }

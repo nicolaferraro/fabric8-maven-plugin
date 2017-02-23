@@ -14,7 +14,7 @@
  * permissions and limitations under the License.
  */
 
-package io.fabric8.maven.plugin.enricher;
+package io.fabric8.maven.enricher.api;
 
 import java.util.Map;
 
@@ -22,7 +22,6 @@ import io.fabric8.kubernetes.api.builder.TypedVisitor;
 import io.fabric8.kubernetes.api.model.*;
 import io.fabric8.kubernetes.api.model.extensions.*;
 import io.fabric8.maven.core.config.ProcessorConfig;
-import io.fabric8.maven.enricher.api.Kind;
 
 /**
  * @author roland
@@ -30,9 +29,9 @@ import io.fabric8.maven.enricher.api.Kind;
  */
 public abstract class SelectorVisitor<T> extends TypedVisitor<T> {
 
-    final EnricherManager enricherManager;
+    final DefaultEnricherService enricherManager;
 
-    SelectorVisitor(EnricherManager enricherManager) {
+    SelectorVisitor(DefaultEnricherService enricherManager) {
         this.enricherManager = enricherManager;
     }
 
@@ -58,7 +57,7 @@ public abstract class SelectorVisitor<T> extends TypedVisitor<T> {
 
     static class ServiceSpecBuilderVisitor extends SelectorVisitor<ServiceSpecBuilder> {
 
-        ServiceSpecBuilderVisitor(EnricherManager enricherManager) {
+        ServiceSpecBuilderVisitor(DefaultEnricherService enricherManager) {
             super(enricherManager);
         }
 
@@ -69,7 +68,7 @@ public abstract class SelectorVisitor<T> extends TypedVisitor<T> {
     }
 
     static class ReplicationControllerSpecBuilderVisitor extends SelectorVisitor<ReplicationControllerSpecBuilder> {
-        ReplicationControllerSpecBuilderVisitor(EnricherManager enricherManager) {
+        ReplicationControllerSpecBuilderVisitor(DefaultEnricherService enricherManager) {
             super(enricherManager);
         }
 
@@ -83,7 +82,7 @@ public abstract class SelectorVisitor<T> extends TypedVisitor<T> {
 
     static class DeploymentSpecBuilderVisitor extends SelectorVisitor<DeploymentSpecBuilder> {
 
-        DeploymentSpecBuilderVisitor(EnricherManager enricherManager) {
+        DeploymentSpecBuilderVisitor(DefaultEnricherService enricherManager) {
             super(enricherManager);
         }
 
@@ -101,7 +100,7 @@ public abstract class SelectorVisitor<T> extends TypedVisitor<T> {
 
     static class StatefulSetSpecBuilderVisitor extends SelectorVisitor<StatefulSetSpecBuilder> {
 
-        StatefulSetSpecBuilderVisitor(EnricherManager enricherManager) {
+        StatefulSetSpecBuilderVisitor(DefaultEnricherService enricherManager) {
             super(enricherManager);
         }
 
@@ -119,7 +118,7 @@ public abstract class SelectorVisitor<T> extends TypedVisitor<T> {
 
     static class DaemonSetSpecBuilderVisitor extends SelectorVisitor<DaemonSetSpecBuilder> {
 
-        DaemonSetSpecBuilderVisitor(EnricherManager enricherManager) {
+        DaemonSetSpecBuilderVisitor(DefaultEnricherService enricherManager) {
             super(enricherManager);
         }
 
@@ -136,7 +135,7 @@ public abstract class SelectorVisitor<T> extends TypedVisitor<T> {
     }
 
     static class JobSpecBuilderVisitor extends SelectorVisitor<JobSpecBuilder> {
-        JobSpecBuilderVisitor(EnricherManager enricherManager) {
+        JobSpecBuilderVisitor(DefaultEnricherService enricherManager) {
             super(enricherManager);
         }
 
@@ -154,7 +153,7 @@ public abstract class SelectorVisitor<T> extends TypedVisitor<T> {
 
     static class ReplicaSetSpecBuilderVisitor extends SelectorVisitor<ReplicaSetSpecBuilder> {
 
-        ReplicaSetSpecBuilderVisitor(EnricherManager enricherManager) {
+        ReplicaSetSpecBuilderVisitor(DefaultEnricherService enricherManager) {
             super(enricherManager);
         }
 

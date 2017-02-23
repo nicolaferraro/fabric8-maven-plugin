@@ -27,10 +27,15 @@ import io.fabric8.maven.core.util.GoalFinder;
 import io.fabric8.maven.core.util.ProfileUtil;
 import io.fabric8.maven.docker.config.ImageConfiguration;
 import io.fabric8.maven.generator.api.GeneratorContext;
-import io.fabric8.maven.plugin.generator.GeneratorManager;
+import io.fabric8.maven.generator.api.DefaultGeneratorService;
+
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
-import org.apache.maven.plugins.annotations.*;
+import org.apache.maven.plugins.annotations.Component;
+import org.apache.maven.plugins.annotations.LifecyclePhase;
+import org.apache.maven.plugins.annotations.Mojo;
+import org.apache.maven.plugins.annotations.Parameter;
+import org.apache.maven.plugins.annotations.ResolutionScope;
 
 /**
  * Uploads the built Docker images to a Docker registry
@@ -123,7 +128,7 @@ public class PushMojo extends io.fabric8.maven.docker.PushMojo {
                 .strategy(buildStrategy)
                 .useProjectClasspath(false)
                 .build();
-            return GeneratorManager.generate(configs, ctx, true);
+            return new DefaultGeneratorService(ctx).generate(configs, true);
         } catch (Exception e) {
             throw new IllegalArgumentException("Cannot extract generator config: " + e,e);
         }

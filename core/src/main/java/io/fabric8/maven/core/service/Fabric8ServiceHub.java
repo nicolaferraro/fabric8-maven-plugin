@@ -32,9 +32,17 @@ public class Fabric8ServiceHub {
 
     private BuildService buildService;
 
-    public Fabric8ServiceHub(ClusterAccess clusterAccess, PlatformMode mode, Logger log, ServiceHub dockerServiceHub) {
+    private GeneratorService generatorService;
+
+    private EnricherService enricherService;
+
+    public Fabric8ServiceHub(ClusterAccess clusterAccess, PlatformMode mode, Logger log, ServiceHub dockerServiceHub, GeneratorService generatorService, EnricherService enricherService) {
         PlatformMode resolvedMode = clusterAccess.resolvePlatformMode(mode, log);
         KubernetesClient client = clusterAccess.createDefaultClient(log);
+
+        // Create common services
+        this.generatorService = generatorService;
+        this.enricherService = enricherService;
 
         // Creating platform-dependent services
         if (resolvedMode == PlatformMode.kubernetes) {
@@ -43,7 +51,7 @@ public class Fabric8ServiceHub {
 
         } else if(resolvedMode == PlatformMode.openshift) {
             // Openshift services
-            this.buildService = new OpenshiftBuildService((OpenShiftClient) client, log, dockerServiceHub);
+            this.buildService = new OpenshiftBuildService((OpenShiftClient) client, log, dockerServiceHub, enricherService);
 
         } else {
             throw new IllegalArgumentException("Unknown platform mode " + mode + " resolved as "+ resolvedMode);
@@ -55,4 +63,11 @@ public class Fabric8ServiceHub {
         return buildService;
     }
 
+    public GeneratorService getGeneratorService() {
+        return generatorService;
+    }
+
+    public EnricherService getEnricherService() {
+        return enricherService;
+    }
 }
