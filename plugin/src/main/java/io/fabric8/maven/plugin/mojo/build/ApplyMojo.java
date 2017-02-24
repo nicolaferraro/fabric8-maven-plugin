@@ -27,6 +27,7 @@ import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientException;
 import io.fabric8.maven.core.access.ClusterAccess;
 import io.fabric8.maven.core.service.ApplyService;
+import io.fabric8.maven.core.service.KubernetesService;
 import io.fabric8.maven.core.util.KubernetesResourceUtil;
 import io.fabric8.maven.plugin.mojo.AbstractFabric8Mojo;
 import io.fabric8.utils.Files;
@@ -37,7 +38,6 @@ import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.plugins.annotations.ResolutionScope;
-import org.apache.maven.project.MavenProject;
 
 /**
  * Base class for goals which deploy the generated artifacts into the Kubernetes cluster
@@ -168,11 +168,13 @@ public class ApplyMojo extends AbstractFabric8Mojo {
 
     private ClusterAccess clusterAccess;
 
+    private KubernetesClient kubernetes;
+
     public void executeInternal() throws MojoExecutionException, MojoFailureException {
         clusterAccess = new ClusterAccess(namespace);
 
         try {
-            KubernetesClient kubernetes = clusterAccess.createDefaultClient(log);
+            kubernetes = clusterAccess.createDefaultClient(log);
             URL masterUrl = kubernetes.getMasterUrl();
             File manifest;
             if (KubernetesHelper.isOpenShift(kubernetes)) {
@@ -196,31 +198,13 @@ public class ApplyMojo extends AbstractFabric8Mojo {
             KubernetesResourceUtil.validateKubernetesMasterUrl(masterUrl);
 
             String namespace = clusterAccess.getNamespace();
-
             log.info("Using %s at %s in namespace %s with manifest %s ", clusterKind, masterUrl, namespace, manifest);
 
-            Controller controller = createController();
-            controller.setAllowCreate(createNewResources);
-            controller.setServicesOnlyMode(servicesOnly);
-            controller.setIgnoreServiceMode(ignoreServices);
-            controller.setLogJsonDir(jsonLogDir);
-            controller.setBasedir(getRootProjectFolder());
-            controller.setIgnoreRunningOAuthClients(ignoreRunningOAuthClients);
-            controller.setProcessTemplatesLocally(processTemplatesLocally);
-            controller.setDeletePodsOnReplicationControllerUpdate(deletePodsOnReplicationControllerUpdate);
-            controller.setRollingUpgrade(rollingUpgrades);
-            controller.setRollingUpgradePreserveScale(isRollingUpgradePreserveScale());
 
-            boolean openShift = KubernetesHelper.isOpenShift(kubernetes);
-            if (openShift) {
-                getLog().info("OpenShift platform detected");
-            } else {
-                disableOpenShiftFeatures(controller);
-            }
 
             Set<HasMetadata> entities = KubernetesResourceUtil.loadResources(manifest);
 
-            applyEntities(controller, kubernetes, namespace, manifest.getName(), entities);
+            applyEntities(kubernetes, namespace, manifest.getName(), entities);
 
         } catch (KubernetesClientException e) {
             KubernetesResourceUtil.handleKubernetesClientException(e, this.log);
@@ -231,8 +215,16 @@ public class ApplyMojo extends AbstractFabric8Mojo {
         }
     }
 
-    protected void applyEntities(Controller controller, KubernetesClient kubernetes, String namespace, String fileName, Set<HasMetadata> entities) throws Exception {
-        new ApplyService(getApplyServiceConfig(), controller, clusterAccess, kubernetes, log).applyEntities(fileName, entities);
+    protected void applyEntities(KubernetesClient kubernetes, String namespace, String fileName, Set<HasMetadata> entities) throws Exception {
+        getApplyService().applyEntities(fileName, entities);
+    }
+
+    protected ApplyService getApplyService() {
+        return new ApplyService(getApplyServiceConfig(), createController(), clusterAccess, kubernetes, log);
+    }
+
+    protected KubernetesService getKubernetesService() {
+        return new KubernetesService(log, kubernetes, s2iBuildNameSuffix);
     }
 
     protected ApplyService.ApplyServiceConfig getApplyServiceConfig() {
@@ -244,19 +236,30 @@ public class ApplyMojo extends AbstractFabric8Mojo {
                 .build();
     }
 
-    public boolean isRollingUpgradePreserveScale() {
-        return false;
-    }
-
-    public MavenProject getProject() {
-        return project;
-    }
-
     protected Controller createController() {
         Controller controller = new Controller(clusterAccess.createDefaultClient(log));
         controller.setThrowExceptionOnError(failOnError);
         controller.setRecreateMode(recreate);
+        controller.setAllowCreate(createNewResources);
+        controller.setServicesOnlyMode(servicesOnly);
+        controller.setIgnoreServiceMode(ignoreServices);
+        controller.setLogJsonDir(jsonLogDir);
+        controller.setBasedir(getRootProjectFolder());
+        controller.setIgnoreRunningOAuthClients(ignoreRunningOAuthClients);
+        controller.setProcessTemplatesLocally(processTemplatesLocally);
+        controller.setDeletePodsOnReplicationControllerUpdate(deletePodsOnReplicationControllerUpdate);
+        controller.setRollingUpgrade(rollingUpgrades);
+        controller.setRollingUpgradePreserveScale(isRollingUpgradePreserveScale());
+
         getLog().debug("Using recreate mode: " + recreate);
+
+        boolean openShift = KubernetesHelper.isOpenShift(kubernetes);
+        if (openShift) {
+            getLog().info("OpenShift platform detected");
+        } else {
+            disableOpenShiftFeatures(controller);
+        }
+
         return controller;
     }
 
@@ -270,12 +273,15 @@ public class ApplyMojo extends AbstractFabric8Mojo {
         controller.setProcessTemplatesLocally(true);
     }
 
+    public boolean isRollingUpgradePreserveScale() {
+        return false;
+    }
+
     /**
      * Returns the root project folder
      */
     protected File getRootProjectFolder() {
         File answer = null;
-        MavenProject project = getProject();
         while (project != null) {
             File basedir = project.getBasedir();
             if (basedir != null) {

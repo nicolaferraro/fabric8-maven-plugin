@@ -15,11 +15,18 @@
  */
 package io.fabric8.maven.plugin.mojo.develop;
 
+import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+
 import io.fabric8.kubernetes.api.Controller;
 import io.fabric8.kubernetes.api.model.Container;
 import io.fabric8.kubernetes.api.model.ContainerPort;
 import io.fabric8.kubernetes.api.model.EnvVar;
 import io.fabric8.kubernetes.api.model.HasMetadata;
+import io.fabric8.kubernetes.api.model.LabelSelector;
 import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.PodList;
 import io.fabric8.kubernetes.api.model.PodSpec;
@@ -28,7 +35,6 @@ import io.fabric8.kubernetes.api.model.ReplicationController;
 import io.fabric8.kubernetes.api.model.ReplicationControllerSpec;
 import io.fabric8.kubernetes.api.model.extensions.Deployment;
 import io.fabric8.kubernetes.api.model.extensions.DeploymentSpec;
-import io.fabric8.kubernetes.api.model.LabelSelector;
 import io.fabric8.kubernetes.api.model.extensions.ReplicaSet;
 import io.fabric8.kubernetes.api.model.extensions.ReplicaSetSpec;
 import io.fabric8.kubernetes.client.KubernetesClient;
@@ -36,8 +42,8 @@ import io.fabric8.kubernetes.client.KubernetesClientException;
 import io.fabric8.kubernetes.client.Watch;
 import io.fabric8.kubernetes.client.Watcher;
 import io.fabric8.kubernetes.client.dsl.FilterWatchListDeletable;
+import io.fabric8.maven.core.service.ApplyService;
 import io.fabric8.maven.core.util.DebugConstants;
-import io.fabric8.maven.core.util.KubernetesClientUtil;
 import io.fabric8.maven.core.util.KubernetesResourceUtil;
 import io.fabric8.maven.core.util.ProcessUtil;
 import io.fabric8.maven.docker.util.Logger;
@@ -47,26 +53,21 @@ import io.fabric8.openshift.api.model.DeploymentConfigSpec;
 import io.fabric8.openshift.client.OpenShiftClient;
 import io.fabric8.utils.Objects;
 import io.fabric8.utils.Strings;
+
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.plugins.annotations.ResolutionScope;
 
-import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
-import java.util.concurrent.CountDownLatch;
-
 import static io.fabric8.kubernetes.api.KubernetesHelper.getKind;
 import static io.fabric8.kubernetes.api.KubernetesHelper.getName;
 import static io.fabric8.kubernetes.api.KubernetesHelper.isPodReady;
 import static io.fabric8.kubernetes.api.KubernetesHelper.isPodRunning;
-import static io.fabric8.maven.core.util.KubernetesResourceUtil.getPodLabelSelector;
 import static io.fabric8.maven.core.util.KubernetesClientUtil.getPodStatusDescription;
 import static io.fabric8.maven.core.util.KubernetesClientUtil.getPodStatusMessagePostfix;
 import static io.fabric8.maven.core.util.KubernetesClientUtil.withSelector;
+import static io.fabric8.maven.core.util.KubernetesResourceUtil.getPodLabelSelector;
 
 /**
  * Ensures that the current app has debug enabled, then opens the debug port so that you can debug the latest pod
@@ -85,7 +86,8 @@ public class DebugMojo extends ApplyMojo {
     private Logger podWaitLog;
 
     @Override
-    protected void applyEntities(Controller controller, KubernetesClient kubernetes, String namespace, String fileName, Set<HasMetadata> entities) throws Exception {
+    protected void applyEntities(KubernetesClient kubernetes, String namespace, String fileName, Set<HasMetadata> entities) throws Exception {
+        ApplyService applyService = getApplyService();
         LabelSelector firstSelector = null;
         for (HasMetadata entity : entities) {
             String name = getName(entity);
@@ -135,12 +137,12 @@ public class DebugMojo extends ApplyMojo {
             if (selector != null) {
                 firstSelector = selector;
             } else {
-                controller.apply(entity, fileName);
+                applyService.applyEntity(fileName, entity);
             }
         }
         if (firstSelector != null) {
             String podName = waitForRunningPodWithEnvVar(kubernetes, namespace, firstSelector, DebugConstants.ENV_VAR_JAVA_DEBUG, "true");
-            portForward(controller, podName);
+            portForward(applyService, podName);
         }
     }
 
@@ -214,8 +216,14 @@ public class DebugMojo extends ApplyMojo {
     }
 
 
-    private void portForward(Controller controller, String podName) throws MojoExecutionException {
-        File command = KubernetesClientUtil.findKubeCtlExecutable(controller, log);
+    private void portForward(ApplyService service, String podName) throws MojoExecutionException {
+        File command;
+        try {
+            command = service.findKubeCtlExecutable();
+        } catch (Exception e) {
+            throw new MojoExecutionException("Failed to find the kubernetes executable", e);
+        }
+
         log.info("Port forwarding to port " + remoteDebugPort + " on pod " + podName + " using command " + command);
 
         List<String> args = new ArrayList<>();

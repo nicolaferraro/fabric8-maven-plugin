@@ -31,7 +31,7 @@ public class AbstractTailLogMojo extends ApplyMojo {
     private String podName;
 
     protected PodLogService getLogService() {
-        return new PodLogService(getLogServiceContext());
+        return new PodLogService(getLogServiceContext(), getKubernetesService());
     }
 
     protected PodLogService.PodLogServiceContext getLogServiceContext() {
@@ -41,7 +41,6 @@ public class AbstractTailLogMojo extends ApplyMojo {
                 .podName(podName)
                 .newPodLog(createLogger("[[C]][NEW][[C]] "))
                 .oldPodLog(createLogger("[[R]][OLD][[R]] "))
-                .s2iBuildNameSuffix(s2iBuildNameSuffix)
                 .build();
     }
 

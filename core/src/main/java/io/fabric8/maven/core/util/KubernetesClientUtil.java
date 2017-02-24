@@ -67,61 +67,11 @@ import static io.fabric8.kubernetes.api.KubernetesHelper.getName;
 public class KubernetesClientUtil {
 
 
-    public static void resizeApp(KubernetesClient kubernetes, String namespace, Set<HasMetadata> entities, int replicas, Logger log) {
-        for (HasMetadata entity : entities) {
-            String name = getName(entity);
-            Scaleable<?> scalable = null;
-            if (entity instanceof Deployment) {
-                scalable = kubernetes.extensions().deployments().inNamespace(namespace).withName(name);
-            } else if (entity instanceof ReplicaSet) {
-                scalable = kubernetes.extensions().replicaSets().inNamespace(namespace).withName(name);
-            } else if (entity instanceof ReplicationController) {
-                scalable = kubernetes.replicationControllers().inNamespace(namespace).withName(name);
-            } else if (entity instanceof DeploymentConfig) {
-                OpenShiftClient openshiftClient = new Controller(kubernetes).getOpenShiftClientOrNull();
-                if (openshiftClient == null) {
-                    log.warn("Ignoring DeploymentConfig %s as not connected to an OpenShift cluster", name);
-                    continue;
-                }
-                scalable = openshiftClient.deploymentConfigs().inNamespace(namespace).withName(name);
-            }
-            if (scalable != null) {
-                log.info("Scaling " + getKind(entity) + " " + namespace + "/" + name + " to replicas: " + replicas);
-                scalable.scale(replicas, true);
-            }
-        }
-    }
 
 
 
-    public static void deleteEntities(KubernetesClient kubernetes, String namespace, Set<HasMetadata> entities, String s2iBuildNameSuffix, Logger log) {
-        List<HasMetadata> list = new ArrayList<>(entities);
 
-        // For OpenShift cluster, also delete s2i buildconfig
-        OpenShiftClient openshiftClient = new Controller(kubernetes).getOpenShiftClientOrNull();
-        if (openshiftClient != null) {
-            for (HasMetadata entity : list) {
-                if ("ImageStream".equals(getKind(entity))) {
-                    ImageName imageName = new ImageName(entity.getMetadata().getName());
-                    String buildName = getS2IBuildName(imageName, s2iBuildNameSuffix);
-                    log.info("Deleting resource BuildConfig " + namespace + "/" + buildName);
-                    openshiftClient.buildConfigs().inNamespace(namespace).withName(buildName).delete();
-                }
-            }
-        }
 
-        // lets delete in reverse order
-        Collections.reverse(list);
-
-        for (HasMetadata entity : list) {
-            log.info("Deleting resource " + getKind(entity) + " " + namespace + "/" + getName(entity));
-            kubernetes.resource(entity).inNamespace(namespace).cascading(true).delete();
-        }
-    }
-
-    private static String getS2IBuildName(ImageName imageName, String s2iBuildNameSuffix) {
-        return imageName.getSimpleName() + s2iBuildNameSuffix;
-    }
 
 
     public static FilterWatchListDeletable<Pod, PodList, Boolean, Watch, Watcher<Pod>> withSelector(ClientNonNamespaceOperation<Pod, PodList, DoneablePod, ClientPodResource<Pod, DoneablePod>> pods, LabelSelector selector, Logger log) {
@@ -186,25 +136,6 @@ public class KubernetesClientUtil {
             }
         };
         thread.start();
-    }
-
-    public static File findKubeCtlExecutable(Controller controller, Logger log) {
-        OpenShiftClient openShiftClient = controller.getOpenShiftClientOrNull();
-        String command = openShiftClient != null ? "oc" : "kubectl";
-
-        String missingCommandMessage;
-        File file = ProcessUtil.findExecutable(log, command);
-        if (file == null && command.equals("oc")) {
-            file = ProcessUtil.findExecutable(log, command);
-            missingCommandMessage = "commands oc or kubectl";
-        } else {
-            missingCommandMessage = "command " + command;
-        }
-        if (file == null) {
-            throw new IllegalStateException("Could not find " + missingCommandMessage +
-                    ". Please try running `mvn fabric8:install` to install the necessary binaries and ensure they get added to your $PATH");
-        }
-        return file;
     }
 
     public static String getPodStatusDescription(Pod pod) {

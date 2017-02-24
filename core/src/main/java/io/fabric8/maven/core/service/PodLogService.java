@@ -13,9 +13,9 @@ import io.fabric8.kubernetes.api.PodStatusType;
 import io.fabric8.kubernetes.api.model.Container;
 import io.fabric8.kubernetes.api.model.DoneablePod;
 import io.fabric8.kubernetes.api.model.HasMetadata;
+import io.fabric8.kubernetes.api.model.LabelSelector;
 import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.PodList;
-import io.fabric8.kubernetes.api.model.LabelSelector;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientException;
 import io.fabric8.kubernetes.client.Watch;
@@ -31,10 +31,8 @@ import io.fabric8.utils.Strings;
 import static io.fabric8.kubernetes.api.KubernetesHelper.getName;
 import static io.fabric8.kubernetes.api.KubernetesHelper.getPodStatus;
 import static io.fabric8.kubernetes.api.KubernetesHelper.isPodRunning;
-import static io.fabric8.maven.core.util.KubernetesClientUtil.deleteEntities;
 import static io.fabric8.maven.core.util.KubernetesClientUtil.getPodStatusDescription;
 import static io.fabric8.maven.core.util.KubernetesClientUtil.getPodStatusMessagePostfix;
-import static io.fabric8.maven.core.util.KubernetesClientUtil.resizeApp;
 import static io.fabric8.maven.core.util.KubernetesClientUtil.withSelector;
 import static io.fabric8.maven.core.util.KubernetesResourceUtil.getPodLabelSelector;
 
@@ -48,6 +46,7 @@ public class PodLogService {
 
 
     private PodLogServiceContext context;
+    private KubernetesService kubernetesService;
     private Logger log;
 
     private Watch podWatcher;
@@ -58,8 +57,9 @@ public class PodLogService {
     private String newestPodName;
     private CountDownLatch logWatchTerminateLatch;
 
-    public PodLogService(PodLogServiceContext context) {
+    public PodLogService(PodLogServiceContext context, KubernetesService kubernetesService) {
         this.context = context;
+        this.kubernetesService = kubernetesService;
         this.log = context.getLog();
     }
 
@@ -85,16 +85,16 @@ public class PodLogService {
                 } else {
                     log.warn("Unknown on-exit command: `%s`", onExitOperationLower);
                 }
-                resizeApp(kubernetes, namespace, entities, 1, log);
+                kubernetesService.resizeApp(namespace, entities, 1);
                 Runtime.getRuntime().addShutdownHook(new Thread("pod log service shutdown hook") {
                     @Override
                     public void run() {
                         if (onExitOperationLower.equals(OPERATION_UNDEPLOY)) {
                             log.info("Undeploying the app:");
-                            deleteEntities(kubernetes, namespace, entities, context.getS2iBuildNameSuffix(), log);
+                            kubernetesService.deleteEntities(namespace, entities);
                         } else if (onExitOperationLower.equals(OPERATION_STOP)) {
                             log.info("Stopping the app:");
-                            resizeApp(kubernetes, namespace, entities, 0, log);
+                            kubernetesService.resizeApp(namespace, entities, 0);
                         }
                         if (podWatcher != null) {
                             podWatcher.close();
@@ -299,8 +299,6 @@ public class PodLogService {
         private String logContainerName;
         private String podName;
 
-        private String s2iBuildNameSuffix = "-s2i";
-
         public PodLogServiceContext() {
         }
 
@@ -322,10 +320,6 @@ public class PodLogService {
 
         public String getPodName() {
             return podName;
-        }
-
-        public String getS2iBuildNameSuffix() {
-            return s2iBuildNameSuffix;
         }
 
         public static class Builder {
@@ -362,11 +356,6 @@ public class PodLogService {
 
             public Builder podName(String podName) {
                 context.podName = podName;
-                return this;
-            }
-
-            public Builder s2iBuildNameSuffix(String s2iBuildNameSuffix) {
-                context.s2iBuildNameSuffix = s2iBuildNameSuffix;
                 return this;
             }
 

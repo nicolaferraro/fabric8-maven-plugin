@@ -18,6 +18,7 @@ package io.fabric8.maven.core.service;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -44,7 +45,7 @@ import io.fabric8.kubernetes.api.model.extensions.IngressSpec;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.dsl.ClientResource;
 import io.fabric8.maven.core.access.ClusterAccess;
-import io.fabric8.maven.core.util.KubernetesClientUtil;
+import io.fabric8.maven.core.util.ProcessUtil;
 import io.fabric8.maven.docker.util.Logger;
 import io.fabric8.openshift.api.model.Route;
 import io.fabric8.openshift.api.model.RouteList;
@@ -85,6 +86,30 @@ public class ApplyService {
         this.controller = controller;
     }
 
+
+    public File findKubeCtlExecutable() throws Exception {
+        OpenShiftClient openShiftClient = controller.getOpenShiftClientOrNull();
+        String command = openShiftClient != null ? "oc" : "kubectl";
+
+        String missingCommandMessage;
+        File file = ProcessUtil.findExecutable(log, command);
+        if (file == null && command.equals("oc")) {
+            file = ProcessUtil.findExecutable(log, command);
+            missingCommandMessage = "commands oc or kubectl";
+        } else {
+            missingCommandMessage = "command " + command;
+        }
+        if (file == null) {
+            throw new IllegalStateException("Could not find " + missingCommandMessage +
+                    ". Please try running `mvn fabric8:install` to install the necessary binaries and ensure they get added to your $PATH");
+        }
+        return file;
+    }
+
+    public void applyEntity(String fileName, HasMetadata entity) throws Exception {
+        applyEntities(fileName, Collections.singleton(entity));
+    }
+
     public void applyEntities(String fileName, Set<HasMetadata> entities) throws Exception {
         // lets check we have created the namespace
         String namespace = clusterAccess.getNamespace();
@@ -116,7 +141,7 @@ public class ApplyService {
 
         File file = null;
         try {
-            file = KubernetesClientUtil.findKubeCtlExecutable(controller, log);
+            file = findKubeCtlExecutable();
         } catch (Exception e) {
             log.warn("%s", e.getMessage());
         }
@@ -444,7 +469,6 @@ public class ApplyService {
         private Logger externalProcessLogger;
 
         private String routeDomain;
-
 
         public ApplyServiceConfig() {
         }
