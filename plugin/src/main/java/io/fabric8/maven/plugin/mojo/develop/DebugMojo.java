@@ -43,6 +43,7 @@ import io.fabric8.kubernetes.client.Watch;
 import io.fabric8.kubernetes.client.Watcher;
 import io.fabric8.kubernetes.client.dsl.FilterWatchListDeletable;
 import io.fabric8.maven.core.service.ApplyService;
+import io.fabric8.maven.core.service.Fabric8ServiceHub;
 import io.fabric8.maven.core.util.DebugConstants;
 import io.fabric8.maven.core.util.KubernetesResourceUtil;
 import io.fabric8.maven.core.util.ProcessUtil;
@@ -86,8 +87,10 @@ public class DebugMojo extends ApplyMojo {
     private Logger podWaitLog;
 
     @Override
-    protected void applyEntities(KubernetesClient kubernetes, String namespace, String fileName, Set<HasMetadata> entities) throws Exception {
-        ApplyService applyService = getApplyService();
+    protected void applyEntities(Fabric8ServiceHub hub, String namespace, String fileName, Set<HasMetadata> entities) throws Exception {
+        ApplyService applyService = hub.getApplyService();
+        KubernetesClient kubernetes = hub.getKubernetesClient();
+
         LabelSelector firstSelector = null;
         for (HasMetadata entity : entities) {
             String name = getName(entity);
@@ -280,5 +283,3 @@ public class DebugMojo extends ApplyMojo {
     }
 
 }
-
-

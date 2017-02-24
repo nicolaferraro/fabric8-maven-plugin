@@ -63,12 +63,14 @@ import org.apache.maven.plugin.MojoExecutionException;
  */
 public class OpenshiftBuildService implements BuildService {
 
+    private BuildServiceConfig config;
     private final OpenShiftClient client;
     private final Logger log;
     private ServiceHub dockerServiceHub;
     private EnricherService enricherService;
 
-    public OpenshiftBuildService(OpenShiftClient client, Logger log, ServiceHub dockerServiceHub, EnricherService enricherService) {
+    public OpenshiftBuildService(BuildServiceConfig config, OpenShiftClient client, Logger log, ServiceHub dockerServiceHub, EnricherService enricherService) {
+        this.config = config;
         this.client = client;
         this.log = log;
         this.dockerServiceHub = dockerServiceHub;
@@ -76,7 +78,7 @@ public class OpenshiftBuildService implements BuildService {
     }
 
     @Override
-    public void build(BuildServiceConfig config, ImageConfiguration imageConfig) throws Fabric8ServiceException {
+    public void build(ImageConfiguration imageConfig) throws Fabric8ServiceException {
 
         try {
             ImageName imageName = new ImageName(imageConfig.getName());
@@ -87,9 +89,9 @@ public class OpenshiftBuildService implements BuildService {
             KubernetesListBuilder builder = new KubernetesListBuilder();
 
             // Check for buildconfig / imagestream and create them if necessary
-            String buildName = updateOrCreateBuildConfig(config, client, builder, imageConfig);
-            checkOrCreateImageStream(config, client, builder, getImageStreamName(imageName));
-            applyResourceObjects(config, client, builder);
+            String buildName = updateOrCreateBuildConfig(client, builder, imageConfig);
+            checkOrCreateImageStream(client, builder, getImageStreamName(imageName));
+            applyResourceObjects(client, builder);
 
             // Start the actual build
             Build build = startBuild(client, dockerTar, buildName);
@@ -98,15 +100,15 @@ public class OpenshiftBuildService implements BuildService {
             waitForOpenShiftBuildToComplete(client, build);
 
             // Create a file with generated image streams
-            saveImageStreamToFile(config, imageName, client);
+            saveImageStreamToFile(imageName, client);
         } catch (Exception ex) {
             throw new Fabric8ServiceException("Unable to build the image using the Openshift build service", ex);
         }
     }
 
-    private String updateOrCreateBuildConfig(BuildServiceConfig config, OpenShiftClient client, KubernetesListBuilder builder, ImageConfiguration imageConfig) {
+    private String updateOrCreateBuildConfig(OpenShiftClient client, KubernetesListBuilder builder, ImageConfiguration imageConfig) {
         ImageName imageName = new ImageName(imageConfig.getName());
-        String buildName = getS2IBuildName(config, imageName);
+        String buildName = getS2IBuildName(imageName);
         String imageStreamName = getImageStreamName(imageName);
         String outputImageStreamTag = imageStreamName + ":" + (imageName.getTag() != null ? imageName.getTag() : "latest");
 
@@ -224,7 +226,7 @@ public class OpenshiftBuildService implements BuildService {
         }
     }
 
-    private void checkOrCreateImageStream(BuildServiceConfig config, OpenShiftClient client, KubernetesListBuilder builder, String imageStreamName) {
+    private void checkOrCreateImageStream(OpenShiftClient client, KubernetesListBuilder builder, String imageStreamName) {
         boolean hasImageStream = client.imageStreams().withName(imageStreamName).get() != null;
         if (hasImageStream && config.getBuildRecreateMode().isImageStream()) {
             client.imageStreams().withName(imageStreamName).delete();
@@ -242,7 +244,7 @@ public class OpenshiftBuildService implements BuildService {
         }
     }
 
-    private void applyResourceObjects(BuildServiceConfig config, OpenShiftClient client, KubernetesListBuilder builder) throws Exception {
+    private void applyResourceObjects(OpenShiftClient client, KubernetesListBuilder builder) throws Exception {
         enricherService.enrich(builder);
         if (builder.hasItems()) {
             KubernetesList k8sList = builder.build();
@@ -363,7 +365,7 @@ public class OpenshiftBuildService implements BuildService {
         }
     }
 
-    private void saveImageStreamToFile(BuildServiceConfig config, ImageName imageName, OpenShiftClient client) throws MojoExecutionException {
+    private void saveImageStreamToFile(ImageName imageName, OpenShiftClient client) throws MojoExecutionException {
         File imageStreamFile = ResourceFileType.yaml.addExtension(new File(config.getBuildDirectory(),
                 imageName.getSimpleName() + "-is"));
         ImageStreamService imageStreamHandler = new ImageStreamService(client, log);
@@ -372,7 +374,7 @@ public class OpenshiftBuildService implements BuildService {
 
     // == Utility methods ==========================
 
-    private String getS2IBuildName(BuildServiceConfig config, ImageName imageName) {
+    private String getS2IBuildName(ImageName imageName) {
         return imageName.getSimpleName() + config.getS2iBuildNameSuffix();
     }
 

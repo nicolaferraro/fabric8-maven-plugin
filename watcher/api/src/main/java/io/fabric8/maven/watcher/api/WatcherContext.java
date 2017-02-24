@@ -16,12 +16,11 @@
 
 package io.fabric8.maven.watcher.api;
 
-import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.maven.core.config.OpenShiftBuildStrategy;
 import io.fabric8.maven.core.config.PlatformMode;
 import io.fabric8.maven.core.config.ProcessorConfig;
+import io.fabric8.maven.core.service.Fabric8ServiceHub;
 import io.fabric8.maven.docker.service.BuildService;
-import io.fabric8.maven.docker.service.ServiceHub;
 import io.fabric8.maven.docker.service.WatchService;
 import io.fabric8.maven.docker.util.Logger;
 
@@ -39,16 +38,13 @@ public class WatcherContext {
     private ProcessorConfig config;
     private String goalName;
     private Logger logger;
-    private Logger newPodLogger;
-    private Logger oldPodLogger;
     private PlatformMode mode;
     private OpenShiftBuildStrategy strategy;
     private boolean useProjectClasspath;
-    private ServiceHub serviceHub;
     private WatchService.WatchContext watchContext;
     private BuildService.BuildContext buildContext;
     private String namespace;
-    private KubernetesClient kubernetesClient;
+    private Fabric8ServiceHub fabric8ServiceHub;
 
     private WatcherContext() {
     }
@@ -85,10 +81,6 @@ public class WatcherContext {
         return useProjectClasspath;
     }
 
-    public ServiceHub getServiceHub() {
-        return serviceHub;
-    }
-
     public WatchService.WatchContext getWatchContext() {
         return watchContext;
     }
@@ -101,16 +93,8 @@ public class WatcherContext {
         return namespace;
     }
 
-    public KubernetesClient getKubernetesClient() {
-        return kubernetesClient;
-    }
-
-    public Logger getNewPodLogger() {
-        return newPodLogger;
-    }
-
-    public Logger getOldPodLogger() {
-        return oldPodLogger;
+    public Fabric8ServiceHub getFabric8ServiceHub() {
+        return fabric8ServiceHub;
     }
 
     // ========================================================================
@@ -144,16 +128,6 @@ public class WatcherContext {
             return this;
         }
 
-        public Builder newPodLogger(Logger newPodLogger) {
-            ctx.newPodLogger = newPodLogger;
-            return this;
-        }
-
-        public Builder oldPodLogger(Logger oldPodLogger) {
-            ctx.oldPodLogger = oldPodLogger;
-            return this;
-        }
-
         public Builder mode(PlatformMode mode) {
             ctx.mode = mode;
             return this;
@@ -169,8 +143,8 @@ public class WatcherContext {
             return this;
         }
 
-        public Builder serviceHub(ServiceHub serviceHub) {
-            ctx.serviceHub = serviceHub;
+        public Builder fabric8ServiceHub(Fabric8ServiceHub fabric8ServiceHub) {
+            ctx.fabric8ServiceHub = fabric8ServiceHub;
             return this;
         }
 
@@ -186,11 +160,6 @@ public class WatcherContext {
 
         public Builder namespace(String namespace) {
             ctx.namespace = namespace;
-            return this;
-        }
-
-        public Builder kubernetesClient(KubernetesClient kubernetesClient) {
-            ctx.kubernetesClient = kubernetesClient;
             return this;
         }
 

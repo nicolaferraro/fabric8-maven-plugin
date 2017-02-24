@@ -21,7 +21,6 @@ import io.fabric8.kubernetes.api.model.Service;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.dsl.ClientResource;
 import io.fabric8.maven.core.config.PlatformMode;
-import io.fabric8.maven.core.service.KubernetesService;
 import io.fabric8.maven.core.service.PodLogService;
 import io.fabric8.maven.core.util.ClassUtil;
 import io.fabric8.maven.core.util.Configs;
@@ -61,15 +60,9 @@ public class SpringBootWatcher extends BaseWatcher {
 
     @Override
     public void watch(List<ImageConfiguration> configs, Set<HasMetadata> resources, PlatformMode mode) throws Exception {
-        KubernetesClient kubernetes = getContext().getKubernetesClient();
+        KubernetesClient kubernetes = getContext().getFabric8ServiceHub().getKubernetesClient();
 
-        PodLogService.PodLogServiceContext logContext = new PodLogService.PodLogServiceContext.Builder()
-                .log(log)
-                .newPodLog(getContext().getNewPodLogger())
-                .oldPodLog(getContext().getOldPodLogger())
-                .build();
-
-        new PodLogService(logContext, new KubernetesService(log, kubernetes, "-s2i")).tailAppPodsLogs(kubernetes, getContext().getNamespace(), resources, false, null, true, null, false);
+        getContext().getFabric8ServiceHub().getPodLogService().tailAppPodsLogs(getContext().getNamespace(), resources, false, null, true, null, false);
 
         long serviceUrlWaitTimeSeconds = Configs.asInt(getConfig(Config.serviceUrlWaitTimeSeconds));
         boolean serviceFound = false;

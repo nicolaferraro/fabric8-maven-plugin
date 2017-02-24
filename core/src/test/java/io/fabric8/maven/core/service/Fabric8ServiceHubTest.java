@@ -36,10 +36,8 @@ import static org.junit.Assert.assertTrue;
 @RunWith(JMockit.class)
 public class Fabric8ServiceHubTest {
 
-    private ClusterAccess clusterAccess = new ClusterAccess("test");
-
     @Mocked
-    private ClusterAccess mockClusterAccess;
+    private ClusterAccess clusterAccess;
 
     @Mocked
     private OpenShiftClient openShiftClient;
@@ -59,18 +57,21 @@ public class Fabric8ServiceHubTest {
     @Mocked
     private WatcherService watcherService;
 
+    @Mocked
+    private BuildService.BuildServiceConfig buildServiceConfig;
+
     @Before
     public void init() {
         new Expectations() {{
             // OpenshiftClient inherits from KubernetesClient
-            mockClusterAccess.createDefaultClient(log); result = openShiftClient;
+            clusterAccess.createDefaultClient(log); result = openShiftClient;
         }};
     }
 
     @Test
     public void testDetectedKubernetesBuilderReturned() {
         new Expectations() {{
-           mockClusterAccess.resolvePlatformMode(withAny(PlatformMode.class.cast(null)), log); result = PlatformMode.kubernetes;
+           clusterAccess.resolvePlatformMode(withAny(PlatformMode.class.cast(null)), log); result = PlatformMode.kubernetes;
         }};
         Fabric8ServiceHub hub = createServiceHub(PlatformMode.auto);
         assertTrue(hub.getBuildService() instanceof DockerBuildService);
@@ -82,7 +83,7 @@ public class Fabric8ServiceHubTest {
     @Test
     public void testDetectedOpenshiftBuilderReturned() {
         new Expectations() {{
-            mockClusterAccess.resolvePlatformMode(withAny(PlatformMode.class.cast(null)), log); result = PlatformMode.openshift;
+            clusterAccess.resolvePlatformMode(withAny(PlatformMode.class.cast(null)), log); result = PlatformMode.openshift;
         }};
         Fabric8ServiceHub hub = createServiceHub(PlatformMode.auto);
         assertTrue(hub.getBuildService() instanceof OpenshiftBuildService);
@@ -92,7 +93,16 @@ public class Fabric8ServiceHubTest {
     }
 
     private Fabric8ServiceHub createServiceHub(PlatformMode mode) {
-        return new Fabric8ServiceHub(mockClusterAccess, mode, log, dockerServiceHub, generatorService, enricherService, watcherService);
+        return new Fabric8ServiceHub.Builder()
+                .clusterAccess(clusterAccess)
+                .platformMode(mode)
+                .log(log)
+                .dockerServiceHub(dockerServiceHub)
+                .generatorService(generatorService)
+                .enricherService(enricherService)
+                .watcherService(watcherService)
+                .buildServiceConfig(buildServiceConfig)
+                .build();
     }
 
 }

@@ -19,6 +19,7 @@ package io.fabric8.maven.plugin.mojo;
 import io.fabric8.kubernetes.api.KubernetesHelper;
 import io.fabric8.kubernetes.api.ServiceNames;
 import io.fabric8.kubernetes.client.KubernetesClient;
+import io.fabric8.maven.core.service.Fabric8ServiceHub;
 import io.fabric8.maven.core.util.GoalFinder;
 import io.fabric8.maven.docker.util.AnsiLogger;
 import io.fabric8.maven.docker.util.Logger;
@@ -64,6 +65,8 @@ public abstract class AbstractFabric8Mojo extends AbstractMojo {
     protected GoalFinder goalFinder;
 
     protected Logger log;
+
+    private Fabric8ServiceHub serviceHub;
 
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
@@ -130,4 +133,22 @@ public abstract class AbstractFabric8Mojo extends AbstractMojo {
         }
         return null;
     }
+
+    /**
+     * Allow accessing the service hub containing all fabric8 services.
+     */
+    protected Fabric8ServiceHub getFabric8ServiceHub() {
+        if (serviceHub == null) {
+            serviceHub = getFabric8ServiceHubBuilder().build();
+        }
+        return serviceHub;
+    }
+
+    /**
+     * Override this method to configure the service available in the service hub.
+     */
+    protected Fabric8ServiceHub.Builder getFabric8ServiceHubBuilder() {
+        return new Fabric8ServiceHub.Builder();
+    }
+
 }

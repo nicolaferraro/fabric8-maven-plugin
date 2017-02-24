@@ -31,6 +31,8 @@ import io.fabric8.maven.core.access.ClusterAccess;
 import io.fabric8.maven.core.config.OpenShiftBuildStrategy;
 import io.fabric8.maven.core.config.PlatformMode;
 import io.fabric8.maven.core.config.ProcessorConfig;
+import io.fabric8.maven.core.service.Fabric8ServiceHub;
+import io.fabric8.maven.core.service.PodLogService;
 import io.fabric8.maven.core.util.GoalFinder;
 import io.fabric8.maven.core.util.Gofabric8Util;
 import io.fabric8.maven.core.util.KubernetesResourceUtil;
@@ -196,21 +198,35 @@ public class WatchMojo extends io.fabric8.maven.docker.WatchMojo {
 
 
         return new WatcherContext.Builder()
-                .serviceHub(hub)
                 .buildContext(buildContext)
                 .watchContext(watchContext)
                 .config(extractWatcherConfig())
                 .goalName("fabric8:watch")
                 .logger(log)
-                .newPodLogger(createLogger("[[C]][NEW][[C]] "))
-                .oldPodLogger(createLogger("[[R]][OLD][[R]] "))
                 .mode(mode)
                 .project(project)
                 .session(session)
                 .strategy(buildStrategy)
                 .useProjectClasspath(useProjectClasspath)
                 .namespace(clusterAccess.getNamespace())
-                .kubernetesClient(kubernetes)
+                .fabric8ServiceHub(getFabric8ServiceHub())
+                .build();
+    }
+
+    public Fabric8ServiceHub getFabric8ServiceHub() {
+        return new Fabric8ServiceHub.Builder()
+                .dockerServiceHub(hub)
+                .log(log)
+                .clusterAccess(clusterAccess)
+                .podLogServiceConfig(getPodLogServiceConfig())
+                .build();
+    }
+
+    public PodLogService.PodLogServiceConfig getPodLogServiceConfig() {
+        return new PodLogService.PodLogServiceConfig.Builder()
+                .log(log)
+                .newPodLog(createLogger("[[C]][NEW][[C]] "))
+                .oldPodLog(createLogger("[[R]][OLD][[R]] "))
                 .build();
     }
 

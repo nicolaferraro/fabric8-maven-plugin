@@ -108,8 +108,8 @@ public class OpenshiftBuildServiceTest {
         BuildService.BuildServiceConfig config = defaultConfig.build();
         OpenShiftMockServer mockServer = createMockServer(config, true, 50, false, false);
         OpenShiftClient client = mockServer.createOpenShiftClient();
-        OpenshiftBuildService service = new OpenshiftBuildService(client, logger, dockerServiceHub, enricherService);
-        service.build(config, image);
+        OpenshiftBuildService service = new OpenshiftBuildService(config, client, logger, dockerServiceHub, enricherService);
+        service.build(image);
 
         // we should add a better way to assert that a certain call has been made
         assertTrue(mockServer.getRequestCount() > 8);
@@ -121,8 +121,8 @@ public class OpenshiftBuildServiceTest {
         BuildService.BuildServiceConfig config = defaultConfig.build();
         OpenShiftMockServer mockServer = createMockServer(config, false, 50, false, false);
         OpenShiftClient client = mockServer.createOpenShiftClient();
-        OpenshiftBuildService service = new OpenshiftBuildService(client, logger, dockerServiceHub, enricherService);
-        service.build(config, image);
+        OpenshiftBuildService service = new OpenshiftBuildService(config, client, logger, dockerServiceHub, enricherService);
+        service.build(image);
     }
 
     @Test
@@ -130,8 +130,8 @@ public class OpenshiftBuildServiceTest {
         BuildService.BuildServiceConfig config = defaultConfig.build();
         OpenShiftMockServer mockServer = createMockServer(config, true, 50, true, true);
         OpenShiftClient client = mockServer.createOpenShiftClient();
-        OpenshiftBuildService service = new OpenshiftBuildService(client, logger, dockerServiceHub, enricherService);
-        service.build(config, image);
+        OpenshiftBuildService service = new OpenshiftBuildService(config, client, logger, dockerServiceHub, enricherService);
+        service.build(image);
 
         assertTrue(mockServer.getRequestCount() > 8);
         assertTrue(new File(baseDir, projectName + "-is.yml").exists());

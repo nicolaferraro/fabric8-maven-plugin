@@ -15,6 +15,7 @@
  */
 package io.fabric8.maven.plugin.mojo.develop;
 
+import io.fabric8.maven.core.service.Fabric8ServiceHub;
 import io.fabric8.maven.core.service.PodLogService;
 import io.fabric8.maven.plugin.mojo.build.ApplyMojo;
 
@@ -30,12 +31,14 @@ public class AbstractTailLogMojo extends ApplyMojo {
     @Parameter(property = "fabric8.log.pod")
     private String podName;
 
-    protected PodLogService getLogService() {
-        return new PodLogService(getLogServiceContext(), getKubernetesService());
+    @Override
+    protected Fabric8ServiceHub.Builder getFabric8ServiceHubBuilder() {
+        return super.getFabric8ServiceHubBuilder()
+                .podLogServiceConfig(getLogServiceConfig());
     }
 
-    protected PodLogService.PodLogServiceContext getLogServiceContext() {
-        return new PodLogService.PodLogServiceContext.Builder()
+    protected PodLogService.PodLogServiceConfig getLogServiceConfig() {
+        return new PodLogService.PodLogServiceConfig.Builder()
                 .log(log)
                 .logContainerName(logContainerName)
                 .podName(podName)

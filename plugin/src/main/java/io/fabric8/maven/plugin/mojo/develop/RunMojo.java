@@ -20,8 +20,7 @@ import java.util.Date;
 import java.util.Set;
 
 import io.fabric8.kubernetes.api.model.HasMetadata;
-import io.fabric8.kubernetes.client.KubernetesClient;
-import io.fabric8.maven.core.service.ApplyService;
+import io.fabric8.maven.core.service.Fabric8ServiceHub;
 
 import org.apache.maven.plugins.annotations.Execute;
 import org.apache.maven.plugins.annotations.LifecyclePhase;
@@ -50,13 +49,12 @@ public class RunMojo extends AbstractTailLogMojo {
     private String onExitOperation;
 
     @Override
-    protected void applyEntities(final KubernetesClient kubernetes, final String namespace,
-                                 String fileName, final Set<HasMetadata> entities) throws Exception {
+    protected void applyEntities(Fabric8ServiceHub hub, String namespace, String fileName, final Set<HasMetadata> entities) throws Exception {
 
         Date ignorePodsOlderThan = new Date();
-        getApplyService().applyEntities(fileName, entities);
+        hub.getApplyService().applyEntities(fileName, entities);
 
-        getLogService().tailAppPodsLogs(kubernetes, namespace, entities, true, this.onExitOperation, true, ignorePodsOlderThan, true);
+        hub.getPodLogService().tailAppPodsLogs(namespace, entities, true, this.onExitOperation, true, ignorePodsOlderThan, true);
     }
 
 }

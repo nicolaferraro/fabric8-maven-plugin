@@ -78,7 +78,7 @@ public class ApplyService {
 
     private Controller controller;
 
-    public ApplyService(ApplyServiceConfig config, Controller controller, ClusterAccess clusterAccess, KubernetesClient kubernetes, Logger log) {
+    ApplyService(ApplyServiceConfig config, Controller controller, ClusterAccess clusterAccess, KubernetesClient kubernetes, Logger log) {
         this.config = config;
         this.log = log;
         this.clusterAccess = clusterAccess;

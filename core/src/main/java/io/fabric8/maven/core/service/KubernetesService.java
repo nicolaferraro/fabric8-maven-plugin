@@ -46,16 +46,12 @@ public class KubernetesService {
 
     private KubernetesClient kubernetes;
 
-    private String s2iBuildNameSuffix;
+    private KubernetesServiceConfig config;
 
-    public KubernetesService(Logger log, KubernetesClient kubernetes, String s2iBuildNameSuffix) {
+    KubernetesService(KubernetesServiceConfig config, Logger log, KubernetesClient kubernetes) {
         this.log = log;
         this.kubernetes = kubernetes;
-        this.s2iBuildNameSuffix = s2iBuildNameSuffix;
-    }
-
-    public KubernetesClient getKubernetesClient() {
-        return kubernetes;
+        this.config = config;
     }
 
     public void resizeApp(String namespace, Set<HasMetadata> entities, int replicas) {
@@ -92,7 +88,7 @@ public class KubernetesService {
             for (HasMetadata entity : list) {
                 if ("ImageStream".equals(getKind(entity))) {
                     ImageName imageName = new ImageName(entity.getMetadata().getName());
-                    String buildName = getS2IBuildName(imageName, s2iBuildNameSuffix);
+                    String buildName = getS2IBuildName(imageName, config.getS2iBuildNameSuffix());
                     log.info("Deleting resource BuildConfig " + namespace + "/" + buildName);
                     openshiftClient.buildConfigs().inNamespace(namespace).withName(buildName).delete();
                 }
@@ -112,6 +108,41 @@ public class KubernetesService {
         return imageName.getSimpleName() + s2iBuildNameSuffix;
     }
 
+    /**
+     * Class to hold configuration parameters for the kubernetes service.
+     */
+    public static class KubernetesServiceConfig {
+
+        private String s2iBuildNameSuffix;
+
+        public KubernetesServiceConfig() {
+        }
+
+        public String getS2iBuildNameSuffix() {
+            return s2iBuildNameSuffix;
+        }
+
+        public static class Builder {
+            private KubernetesServiceConfig config;
+
+            public Builder() {
+                this.config = new KubernetesServiceConfig();
+            }
+
+            public Builder(KubernetesServiceConfig config) {
+                this.config = config;
+            }
+
+            public Builder s2iBuildNameSuffix(String s2iBuildNameSuffix) {
+                config.s2iBuildNameSuffix = s2iBuildNameSuffix;
+                return this;
+            }
+
+            public KubernetesServiceConfig build() {
+                return config;
+            }
+        }
+    }
 
 
 }

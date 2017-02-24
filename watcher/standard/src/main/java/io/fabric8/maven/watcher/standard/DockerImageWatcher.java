@@ -74,7 +74,7 @@ public class DockerImageWatcher extends BaseWatcher {
                 })
                 .build();
 
-        ServiceHub hub = getContext().getServiceHub();
+        ServiceHub hub = getContext().getFabric8ServiceHub().getDockerServiceHub();
         try {
             hub.getWatchService().watch(watchContext, buildContext, configs);
         } catch (Exception ex) {

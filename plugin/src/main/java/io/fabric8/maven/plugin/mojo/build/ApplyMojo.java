@@ -21,12 +21,12 @@ import java.net.URL;
 import java.util.Set;
 
 import io.fabric8.kubernetes.api.Controller;
-import io.fabric8.kubernetes.api.KubernetesHelper;
 import io.fabric8.kubernetes.api.model.HasMetadata;
-import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientException;
 import io.fabric8.maven.core.access.ClusterAccess;
+import io.fabric8.maven.core.config.PlatformMode;
 import io.fabric8.maven.core.service.ApplyService;
+import io.fabric8.maven.core.service.Fabric8ServiceHub;
 import io.fabric8.maven.core.service.KubernetesService;
 import io.fabric8.maven.core.util.KubernetesResourceUtil;
 import io.fabric8.maven.plugin.mojo.AbstractFabric8Mojo;
@@ -166,18 +166,14 @@ public class ApplyMojo extends AbstractFabric8Mojo {
     @Parameter(property = "fabric8.s2i.buildNameSuffix", defaultValue = "-s2i")
     protected String s2iBuildNameSuffix;
 
-    private ClusterAccess clusterAccess;
-
-    private KubernetesClient kubernetes;
 
     public void executeInternal() throws MojoExecutionException, MojoFailureException {
-        clusterAccess = new ClusterAccess(namespace);
-
         try {
-            kubernetes = clusterAccess.createDefaultClient(log);
-            URL masterUrl = kubernetes.getMasterUrl();
+            Fabric8ServiceHub hub = getFabric8ServiceHub();
+
+            URL masterUrl = hub.getKubernetesClient().getMasterUrl();
             File manifest;
-            if (KubernetesHelper.isOpenShift(kubernetes)) {
+            if (hub.isOpenshift()) {
                 manifest = openshiftManifest;
             } else {
                 manifest = kubernetesManifest;
@@ -192,19 +188,17 @@ public class ApplyMojo extends AbstractFabric8Mojo {
             }
 
             String clusterKind = "Kubernetes";
-            if (KubernetesHelper.isOpenShift(kubernetes)) {
+            if (hub.isOpenshift()) {
                 clusterKind = "OpenShift";
             }
             KubernetesResourceUtil.validateKubernetesMasterUrl(masterUrl);
 
-            String namespace = clusterAccess.getNamespace();
+            String namespace = hub.getClusterAccess().getNamespace();
             log.info("Using %s at %s in namespace %s with manifest %s ", clusterKind, masterUrl, namespace, manifest);
-
-
 
             Set<HasMetadata> entities = KubernetesResourceUtil.loadResources(manifest);
 
-            applyEntities(kubernetes, namespace, manifest.getName(), entities);
+            applyEntities(hub, namespace, manifest.getName(), entities);
 
         } catch (KubernetesClientException e) {
             KubernetesResourceUtil.handleKubernetesClientException(e, this.log);
@@ -215,16 +209,27 @@ public class ApplyMojo extends AbstractFabric8Mojo {
         }
     }
 
-    protected void applyEntities(KubernetesClient kubernetes, String namespace, String fileName, Set<HasMetadata> entities) throws Exception {
-        getApplyService().applyEntities(fileName, entities);
+    protected void applyEntities(Fabric8ServiceHub hub, String namespace, String fileName, Set<HasMetadata> entities) throws Exception {
+        hub.getApplyService().applyEntities(fileName, entities);
     }
 
-    protected ApplyService getApplyService() {
-        return new ApplyService(getApplyServiceConfig(), createController(), clusterAccess, kubernetes, log);
+    @Override
+    protected Fabric8ServiceHub.Builder getFabric8ServiceHubBuilder() {
+        ClusterAccess clusterAccess = new ClusterAccess(namespace);
+
+        return super.getFabric8ServiceHubBuilder()
+                .log(log)
+                .clusterAccess(clusterAccess)
+                .platformMode(PlatformMode.DEFAULT)
+                .applyServiceConfig(getApplyServiceConfig())
+                .kubernetesServiceConfig(getKubernetesServiceConfig())
+                .controller(createController(clusterAccess, clusterAccess.isOpenShift(log)));
     }
 
-    protected KubernetesService getKubernetesService() {
-        return new KubernetesService(log, kubernetes, s2iBuildNameSuffix);
+    protected KubernetesService.KubernetesServiceConfig getKubernetesServiceConfig() {
+        return new KubernetesService.KubernetesServiceConfig.Builder()
+                .s2iBuildNameSuffix(s2iBuildNameSuffix)
+                .build();
     }
 
     protected ApplyService.ApplyServiceConfig getApplyServiceConfig() {
@@ -236,7 +241,7 @@ public class ApplyMojo extends AbstractFabric8Mojo {
                 .build();
     }
 
-    protected Controller createController() {
+    protected Controller createController(ClusterAccess clusterAccess, boolean openshift) {
         Controller controller = new Controller(clusterAccess.createDefaultClient(log));
         controller.setThrowExceptionOnError(failOnError);
         controller.setRecreateMode(recreate);
@@ -253,8 +258,7 @@ public class ApplyMojo extends AbstractFabric8Mojo {
 
         getLog().debug("Using recreate mode: " + recreate);
 
-        boolean openShift = KubernetesHelper.isOpenShift(kubernetes);
-        if (openShift) {
+        if (openshift) {
             getLog().info("OpenShift platform detected");
         } else {
             disableOpenShiftFeatures(controller);

@@ -45,8 +45,9 @@ public class PodLogService {
     public static final String OPERATION_STOP = "stop";
 
 
-    private PodLogServiceContext context;
+    private PodLogServiceConfig config;
     private KubernetesService kubernetesService;
+    private KubernetesClient kubernetesClient;
     private Logger log;
 
     private Watch podWatcher;
@@ -57,13 +58,14 @@ public class PodLogService {
     private String newestPodName;
     private CountDownLatch logWatchTerminateLatch;
 
-    public PodLogService(PodLogServiceContext context, KubernetesService kubernetesService) {
-        this.context = context;
+    PodLogService(PodLogServiceConfig config, KubernetesService kubernetesService, KubernetesClient kubernetesClient) {
+        this.config = config;
         this.kubernetesService = kubernetesService;
-        this.log = context.getLog();
+        this.kubernetesClient = kubernetesClient;
+        this.log = config.getLog();
     }
 
-    public void tailAppPodsLogs(final KubernetesClient kubernetes, final String namespace, final Set<HasMetadata> entities,
+    public void tailAppPodsLogs(final String namespace, final Set<HasMetadata> entities,
                                 boolean watchAddedPodsOnly, String onExitOperation, boolean followLog,
                                 Date ignorePodsOlderThan, boolean waitInCurrentThread) {
         LabelSelector selector = null;
@@ -103,7 +105,7 @@ public class PodLogService {
                     }
                 });
             }
-            waitAndLogPods(kubernetes, namespace, selector, watchAddedPodsOnly, ctrlCMessage, followLog, ignorePodsOlderThan, waitInCurrentThread);
+            waitAndLogPods(kubernetesClient, namespace, selector, watchAddedPodsOnly, ctrlCMessage, followLog, ignorePodsOlderThan, waitInCurrentThread);
         } else {
             log.warn("No selector in deployment so cannot watch pods!");
         }
@@ -112,9 +114,9 @@ public class PodLogService {
     private void waitAndLogPods(final KubernetesClient kubernetes, final String namespace, LabelSelector selector, final boolean watchAddedPodsOnly, final String ctrlCMessage, final boolean
             followLog, Date ignorePodsOlderThan, boolean waitInCurrentThread) {
         FilterWatchListDeletable<Pod, PodList, Boolean, Watch, Watcher<Pod>> pods = withSelector(kubernetes.pods().inNamespace(namespace), selector, log);
-        if (context.getPodName() != null) {
-            log.info("Watching pod with selector %s, and name %s waiting for a running pod...", selector, context.getPodName());
-            pods = pods.withField("metadata.name", context.getPodName());
+        if (config.getPodName() != null) {
+            log.info("Watching pod with selector %s, and name %s waiting for a running pod...", selector, config.getPodName());
+            pods = pods.withField("metadata.name", config.getPodName());
         } else {
             log.info("Watching pods with selector %s waiting for a running pod...", selector);
         }
@@ -201,7 +203,7 @@ public class PodLogService {
         Pod watchPod = KubernetesResourceUtil.getNewestPod(addedPods.values());
         newestPodName = getName(watchPod);
 
-        Logger statusLog = Objects.equals(name, newestPodName) ? context.getNewPodLog() : context.getOldPodLog();
+        Logger statusLog = Objects.equals(name, newestPodName) ? config.getNewPodLog() : config.getOldPodLog();
         if (!action.equals(Watcher.Action.MODIFIED) || watchingPodName == null || !watchingPodName.equals(name)) {
             statusLog.info("%s status: %s%s", name, getPodStatusDescription(pod), getPodStatusMessagePostfix(action));
         }
@@ -252,13 +254,13 @@ public class PodLogService {
     }
 
     private String getLogContainerName(List<Container> containers) {
-        if (Strings.isNotBlank(context.getLogContainerName())) {
+        if (Strings.isNotBlank(config.getLogContainerName())) {
             for (Container container : containers) {
-                if (Objects.equals(context.getLogContainerName(), container.getName())) {
-                    return context.getLogContainerName();
+                if (Objects.equals(config.getLogContainerName(), container.getName())) {
+                    return config.getLogContainerName();
                 }
             }
-            log.error("log container name %s does not exist in pod!! Did you set the correct value for property 'fabric8.log.container'", context.getLogContainerName());
+            log.error("log container name %s does not exist in pod!! Did you set the correct value for property 'fabric8.log.container'", config.getLogContainerName());
         }
         return containers.get(0).getName();
     }
@@ -274,9 +276,9 @@ public class PodLogService {
     }
 
     private void watchLog(final LogWatch logWatcher, String podName, final String failureMessage, String ctrlCMessage, String containerName) {
-        context.getNewPodLog().info("Tailing log of pod: " + podName + containerNameMessage(containerName));
-        context.getNewPodLog().info("Press Ctrl-C to " + ctrlCMessage);
-        context.getNewPodLog().info("");
+        config.getNewPodLog().info("Tailing log of pod: " + podName + containerNameMessage(containerName));
+        config.getNewPodLog().info("Press Ctrl-C to " + ctrlCMessage);
+        config.getNewPodLog().info("");
 
         KubernetesClientUtil.printLogsAsync(logWatcher, failureMessage, this.logWatchTerminateLatch, log);
     }
@@ -290,7 +292,7 @@ public class PodLogService {
 
     // =======================================
 
-    public static class PodLogServiceContext {
+    public static class PodLogServiceConfig {
 
         private Logger log;
         private Logger newPodLog;
@@ -299,7 +301,7 @@ public class PodLogService {
         private String logContainerName;
         private String podName;
 
-        public PodLogServiceContext() {
+        public PodLogServiceConfig() {
         }
 
         public Logger getLog() {
@@ -324,13 +326,13 @@ public class PodLogService {
 
         public static class Builder {
 
-            private PodLogServiceContext context;
+            private PodLogServiceConfig context;
 
             public Builder() {
-                this.context = new PodLogServiceContext();
+                this.context = new PodLogServiceConfig();
             }
 
-            public Builder(PodLogServiceContext context) {
+            public Builder(PodLogServiceConfig context) {
                 this.context = context;
             }
 
@@ -359,7 +361,7 @@ public class PodLogService {
                 return this;
             }
 
-            public PodLogServiceContext build() {
+            public PodLogServiceConfig build() {
                 return context;
             }
 

@@ -18,8 +18,7 @@ package io.fabric8.maven.plugin.mojo.develop;
 import java.util.Set;
 
 import io.fabric8.kubernetes.api.model.HasMetadata;
-import io.fabric8.kubernetes.client.KubernetesClient;
-import io.fabric8.maven.core.service.ApplyService;
+import io.fabric8.maven.core.service.Fabric8ServiceHub;
 import io.fabric8.maven.plugin.mojo.build.ApplyMojo;
 
 import org.apache.maven.plugins.annotations.LifecyclePhase;
@@ -38,9 +37,8 @@ public class StartMojo extends ApplyMojo {
     private int replicas;
 
     @Override
-    protected void applyEntities(KubernetesClient kubernetes, String namespace,
-                                 String fileName, Set<HasMetadata> entities) throws Exception {
-        getKubernetesService().resizeApp(namespace, entities, replicas);
+    protected void applyEntities(Fabric8ServiceHub hub, String namespace, String fileName, Set<HasMetadata> entities) throws Exception {
+        hub.getKubernetesService().resizeApp(namespace, entities, replicas);
     }
 }
 
