@@ -22,17 +22,12 @@ import io.fabric8.maven.core.util.Configs;
 import io.fabric8.maven.core.util.PrefixedLogger;
 import io.fabric8.maven.docker.config.ImageConfiguration;
 import io.fabric8.maven.docker.util.Logger;
-import io.fabric8.utils.Objects;
-import io.fabric8.utils.Strings;
+
 import org.apache.maven.project.MavenProject;
-import org.json.JSONArray;
-import org.json.JSONObject;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-
-import static io.fabric8.maven.core.util.Constants.*;
 
 /**
  * @author roland

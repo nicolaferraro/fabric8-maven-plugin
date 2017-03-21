@@ -22,7 +22,6 @@ import mockit.Expectations;
 import mockit.Mocked;
 import mockit.integration.junit4.JMockit;
 import org.apache.maven.model.IssueManagement;
-import org.apache.maven.model.Scm;
 import org.apache.maven.project.MavenProject;
 import org.junit.Assert;
 import org.junit.Test;

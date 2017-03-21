@@ -16,6 +16,7 @@
 package io.fabric8.maven.enricher.fabric8;
 
 import io.fabric8.kubernetes.api.Annotations;
+import io.fabric8.maven.enricher.api.Kind;
 import io.fabric8.maven.enricher.api.*;
 import io.fabric8.utils.Strings;
 import io.fabric8.utils.URLUtils;

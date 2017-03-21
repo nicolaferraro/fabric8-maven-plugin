@@ -26,6 +26,7 @@ import io.fabric8.kubernetes.api.model.HasMetadata;
 import io.fabric8.kubernetes.api.model.ReplicationController;
 import io.fabric8.kubernetes.api.model.extensions.Deployment;
 import io.fabric8.kubernetes.api.model.extensions.ReplicaSet;
+import io.fabric8.kubernetes.api.model.extensions.StatefulSet;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.dsl.Scaleable;
 import io.fabric8.maven.docker.util.ImageName;
@@ -64,6 +65,8 @@ public class KubernetesService {
                 scalable = kubernetes.extensions().replicaSets().inNamespace(namespace).withName(name);
             } else if (entity instanceof ReplicationController) {
                 scalable = kubernetes.replicationControllers().inNamespace(namespace).withName(name);
+            } else if (entity instanceof StatefulSet) {
+                scalable = kubernetes.extensions().thirdPartyResources().sta .inNamespace(namespace).withName(name);
             } else if (entity instanceof DeploymentConfig) {
                 OpenShiftClient openshiftClient = new Controller(kubernetes).getOpenShiftClientOrNull();
                 if (openshiftClient == null) {
